@@ -1,0 +1,108 @@
+name: Update Eden
+
+on:
+  schedule:
+    # Run daily at 6 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    # Allow manual trigger
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Get latest Eden commit
+        id: get_commit
+        run: |
+          # Fetch latest master commit from Eden Gitea
+          LATEST=$(curl -s "https://git.eden-emu.dev/api/v1/repos/eden-emu/eden/commits?limit=1" | jq -r '.[0].sha')
+          echo "Latest commit: $LATEST"
+          echo "commit=$LATEST" >> $GITHUB_OUTPUT
+          
+          # Get current commit from package.nix
+          CURRENT=$(grep -oP 'rev = "\K[^"]+' package.nix | head -1)
+          echo "Current commit: $CURRENT"
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+
+      - name: Check if update needed
+        id: check
+        run: |
+          if [ "${{ steps.get_commit.outputs.commit }}" = "${{ steps.get_commit.outputs.current }}" ]; then
+            echo "No update needed"
+            echo "update=false" >> $GITHUB_OUTPUT
+          else
+            echo "Update available!"
+            echo "update=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update package.nix
+        if: steps.check.outputs.update == 'true'
+        run: |
+          NEW_COMMIT="${{ steps.get_commit.outputs.commit }}"
+          TODAY=$(date +%Y-%m-%d)
+          
+          # Update rev
+          sed -i "s/rev = \"[^\"]*\";/rev = \"$NEW_COMMIT\";/" package.nix
+          
+          # Update version with date
+          sed -i "s/version = \"[^\"]*\";/version = \"0.0.4-unstable-$TODAY\";/" package.nix
+          
+          # Update "Last updated" comment
+          sed -i "s/# Last updated: .*/# Last updated: $TODAY/" package.nix
+          
+          echo "Updated to commit: $NEW_COMMIT"
+
+      - name: Get new hash
+        if: steps.check.outputs.update == 'true'
+        id: hash
+        run: |
+          # Try to build and capture the hash error
+          NEW_HASH=$(nix build --impure --expr '
+            let
+              pkgs = import <nixpkgs> {};
+            in pkgs.fetchgit {
+              url = "https://git.eden-emu.dev/eden-emu/eden.git";
+              rev = "${{ steps.get_commit.outputs.commit }}";
+              fetchSubmodules = true;
+              hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+            }
+          ' 2>&1 | grep -oP 'got:\s+\K\S+' || true)
+          
+          if [ -n "$NEW_HASH" ]; then
+            echo "New hash: $NEW_HASH"
+            sed -i "s|hash = \"sha256-[^\"]*\";|hash = \"$NEW_HASH\";|" package.nix
+          else
+            echo "Failed to get hash, will need manual fix"
+          fi
+
+      - name: Test build
+        if: steps.check.outputs.update == 'true'
+        run: |
+          nix build --show-trace 2>&1 | tail -50 || echo "Build may require manual fixes"
+
+      - name: Create Pull Request
+        if: steps.check.outputs.update == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update eden to ${{ steps.get_commit.outputs.commit }}"
+          title: "Update Eden to latest master"
+          body: |
+            Automated update to latest Eden master commit.
+            
+            **New commit:** `${{ steps.get_commit.outputs.commit }}`
+            **Previous commit:** `${{ steps.get_commit.outputs.current }}`
+            
+            Please verify the build works before merging.
+          branch: auto-update/eden
+          delete-branch: true
