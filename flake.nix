@@ -30,19 +30,26 @@
 
         # Android APK build shell
         devShells.android = let
+          androidPkgs = import nixpkgs {
+            inherit system;
+            config = {
+              android_sdk.accept_license = true;
+              allowUnfree = true;
+            };
+          };
           buildToolsVersion = "35.0.0";
           cmakeVersion = "3.22.1";
-          androidComposition = pkgs.androidenv.composeAndroidPackages {
+          androidComposition = androidPkgs.androidenv.composeAndroidPackages {
             buildToolsVersions = [ buildToolsVersion ];
             platformVersions = [ "36" ];
             cmakeVersions = [ cmakeVersion ];
             abiVersions = [ "arm64-v8a" ];
             includeNDK = true;
-            ndkVersion = "28.0.12674087";
+            ndkVersion = "28.0.13004108";
           };
           androidSdk = androidComposition.androidsdk;
-        in pkgs.mkShell {
-          packages = with pkgs; [
+        in androidPkgs.mkShell {
+          packages = with androidPkgs; [
             androidSdk
             jdk
             git
@@ -58,7 +65,7 @@
 
           shellHook = ''
             export PATH="${androidSdk}/libexec/android-sdk/cmake/${cmakeVersion}/bin:$PATH"
-            echo " Eden Android DevShell activated!"
+            echo "🤖 Eden Android DevShell activated!"
             echo "   ANDROID_HOME=$ANDROID_HOME"
             echo ""
             echo "To build the APK:"
