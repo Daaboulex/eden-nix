@@ -56,6 +56,8 @@
             cacert
             ninja
             pkg-config
+            glslang
+            openssl
           ];
 
           GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidSdk}/libexec/android-sdk/build-tools/${buildToolsVersion}/aapt2";
@@ -65,7 +67,7 @@
             # additional components (platform revisions, etc.) at runtime
             export ANDROID_SDK_MUTABLE="$HOME/.cache/eden-android-sdk"
             if [ ! -d "$ANDROID_SDK_MUTABLE" ]; then
-              echo "📦 Creating mutable Android SDK copy (first time only)..."
+              echo "Creating mutable Android SDK copy (first time only)..."
               mkdir -p "$ANDROID_SDK_MUTABLE"
               cp -r ${androidSdk}/libexec/android-sdk/* "$ANDROID_SDK_MUTABLE/"
               chmod -R u+w "$ANDROID_SDK_MUTABLE"
@@ -76,7 +78,7 @@
             export ANDROID_NDK_ROOT="$ANDROID_SDK_MUTABLE/ndk-bundle"
             export PATH="${androidSdk}/libexec/android-sdk/cmake/${cmakeVersion}/bin:$PATH"
 
-            echo "🤖 Eden Android DevShell activated!"
+            echo "Eden Android DevShell activated!"
             echo "   ANDROID_HOME=$ANDROID_HOME"
             echo ""
             echo "To build the APK:"
