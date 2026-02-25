@@ -27,6 +27,44 @@
             ccache
           ];
         };
+
+        # Android APK build shell
+        devShells.android = let
+          buildToolsVersion = "35.0.0";
+          cmakeVersion = "3.22.1";
+          androidComposition = pkgs.androidenv.composeAndroidPackages {
+            buildToolsVersions = [ buildToolsVersion ];
+            platformVersions = [ "36" ];
+            cmakeVersions = [ cmakeVersion ];
+            abiVersions = [ "arm64-v8a" ];
+            includeNDK = true;
+            ndkVersion = "28.0.12674087";
+          };
+          androidSdk = androidComposition.androidsdk;
+        in pkgs.mkShell {
+          packages = with pkgs; [
+            androidSdk
+            jdk
+            git
+            cacert
+            ninja
+            pkg-config
+          ];
+
+          ANDROID_HOME = "${androidSdk}/libexec/android-sdk";
+          ANDROID_SDK_ROOT = "${androidSdk}/libexec/android-sdk";
+          ANDROID_NDK_ROOT = "${androidSdk}/libexec/android-sdk/ndk-bundle";
+          GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidSdk}/libexec/android-sdk/build-tools/${buildToolsVersion}/aapt2";
+
+          shellHook = ''
+            export PATH="${androidSdk}/libexec/android-sdk/cmake/${cmakeVersion}/bin:$PATH"
+            echo " Eden Android DevShell activated!"
+            echo "   ANDROID_HOME=$ANDROID_HOME"
+            echo ""
+            echo "To build the APK:"
+            echo "   cd src/android && ./gradlew assembleRelease"
+          '';
+        };
       }
     ) // {
       # NixOS module for easy integration

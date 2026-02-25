@@ -1,13 +1,13 @@
 # Eden Emulator CPM Dependencies
 # These are pre-fetched to work with Nix's sandboxed builds
-# URLs and versions from Eden v0.0.4 build logs
+# URLs and versions from Eden master cpmfile.json
 { pkgs }:
 
 {
   # xbyak - JIT assembler for x86/x86_64
   xbyak = pkgs.fetchzip {
-    url = "https://github.com/herumi/xbyak/archive/refs/tags/v7.22.tar.gz";
-    hash = "sha256-ZmdOjO5MbY+z+hJEVgpQzoYGo5GAFgwAPiv4vs/YMUA=";
+    url = "https://github.com/herumi/xbyak/archive/refs/tags/v7.33.2.tar.gz";
+    hash = "sha256-7HFvZ6wr7X7K5rrw9k/LWXEazJ67Hm8IqO2edcEU1pI=";
   };
 
   # enet - Reliable UDP networking
@@ -36,20 +36,20 @@
 
   # discord-rpc - Discord Rich Presence (Eden fork)
   discord-rpc = pkgs.fetchzip {
-    url = "https://github.com/eden-emulator/discord-rpc/archive/1cf7772bb6.tar.gz";
-    hash = "sha256-9qosXzeFq00W3pZ+qkePA2swBKliRz9qlbl6QwFT6Qw=";
+    url = "https://github.com/eden-emulator/discord-rpc/archive/0d8b2d6a37.tar.gz";
+    hash = "sha256-bsVW2yKgTyIPDyVLKYHxlllLhcY9H5B81+23zJLBIBY=";
   };
 
   # spirv-headers - SPIR-V headers
   spirv-headers = pkgs.fetchzip {
-    url = "https://github.com/KhronosGroup/SPIRV-Headers/archive/01e0577914.tar.gz";
-    hash = "sha256-gewCQvcVRw+qdWPWRlYUMTt/aXrZ7Lea058WyqL5c08=";
+    url = "https://github.com/KhronosGroup/SPIRV-Headers/archive/04f10f650d.tar.gz";
+    hash = "sha256-aYKFJxRDoY/Cor8gYVoR/YSyXWSNtcRG0HK8BZH0Ztk=";
   };
 
-  # spirv-tools - SPIR-V tools (crueter fork)
+  # spirv-tools - SPIR-V tools
   spirv-tools = pkgs.fetchzip {
-    url = "https://github.com/crueter/SPIRV-Tools/archive/2fa2d44485.tar.gz";
-    hash = "sha256-AnDHhutLiu7LrU247mNoMcNyc5VMVmj3dBjxf6q4TKY=";
+    url = "https://github.com/KhronosGroup/SPIRV-Tools/archive/0a7e28689a.tar.gz";
+    hash = "sha256-yCWooy1XOIWc9PyzfpNxOg/Fja2z+TTK9Ok6PUfsRe0=";
   };
 
   # sirit - SPIR-V IR builder (Eden fork)
@@ -66,8 +66,8 @@
 
   # unordered_dense - Fast hash map
   unordered-dense = pkgs.fetchzip {
-    url = "https://github.com/martinus/unordered_dense/archive/refs/tags/v4.8.1.tar.gz";
-    hash = "sha256-JdPlyShWnAcdgixDHRaroFg7YWdPtD4Nl1PmpcQ1SAk=";
+    url = "https://github.com/martinus/unordered_dense/archive/7b55cab841.tar.gz";
+    hash = "sha256-yCdn3/OIGLH5uW6BgvfbxPYwtiWivOHabfxaYrQromE=";
   };
 
   # gamemode - Feral game optimizations (headers only)
@@ -76,10 +76,16 @@
     hash = "sha256-RMi4PBKqx1kdthKPs8x7GZyvIapo8PXDeMoT4QCxiws=";
   };
 
-  # vulkan-utility-libraries (custom build)
-  vulkan-utility-libraries = pkgs.fetchurl {
-    url = "https://git.crueter.xyz/scripts/VulkanUtilityHeaders/releases/download/1.4.328/VulkanUtilityHeaders.tar.zst";
-    hash = "sha256-+BRjMR2AOHTjrvIgLl1uCOZI+keOdkY1GkVSQTrLwXQ=";
+  # vulkan-headers - Vulkan API headers (bundled to match vulkan-utility-libraries)
+  vulkan-headers = pkgs.fetchzip {
+    url = "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.342.tar.gz";
+    hash = "sha256-keE8NmUG4UsDwb3vn7IB95Oo576ziH70n8fbrQx/6HA=";
+  };
+
+  # vulkan-utility-libraries - Vulkan utility libraries
+  vulkan-utility-libraries = pkgs.fetchzip {
+    url = "https://github.com/KhronosGroup/Vulkan-Utility-Libraries/archive/refs/tags/v1.4.342.tar.gz";
+    hash = "sha256-M26HqTsnXa3Hm7H+asT7MTC/Z448J0BusegZnaXXCDo=";
   };
 
   # frozen - header-only constexpr containers
@@ -88,10 +94,10 @@
     hash = "sha256-zIczBSRDWjX9hcmYWYkbWY3NAAQwQtKhMTeHlYp4BKk=";
   };
 
-  # quazip - Qt ZIP library
+  # quazip - Qt ZIP library (now from stachenov/quazip)
   quazip = pkgs.fetchzip {
-    url = "https://github.com/crueter/quazip-qt6/archive/f838774d63.tar.gz";
-    hash = "sha256-Jp+v7uwoPxvarzOclgSnoGcwAPXKnm23yrZKtjJCHro=";
+    url = "https://github.com/stachenov/quazip/archive/2e95c9001b.tar.gz";
+    hash = "sha256-F2bPhBNRNcG6qQTlHbEkdTSKEXXTNubIS1+13nBNSU8=";
   };
 
   # mcl - utility library (azahar-emu)
@@ -114,19 +120,19 @@
 
   # oaknut - ARM64 JIT assembler (for ARM builds)
   oaknut = pkgs.fetchzip {
-    url = "https://github.com/merryhime/oaknut/archive/refs/tags/2.0.2.tar.gz";
-    hash = "sha256-kXqBVTmsFeC2jaN2uUq1I8ClJzhjN4HHNeChd+E62k0=";
+    url = "https://github.com/eden-emulator/oaknut/archive/refs/tags/v2.0.3.tar.gz";
+    hash = "sha256-NWJMottKMiG6Rk2/ACNtBiYfWDsCeSGznPTqVO809P0=";
   };
 
-  # httplib - HTTP library (needed by qt_common) - v0.28.0
+  # httplib - HTTP library (needed by qt_common)
   httplib = pkgs.fetchzip {
-    url = "https://github.com/yhirose/cpp-httplib/archive/refs/tags/v0.28.0.tar.gz";
-    hash = "sha256-uhVmIgSnx/FfW6JfoY5YUhYFg61vZzN5E2JQSt/xHcY=";
+    url = "https://github.com/yhirose/cpp-httplib/archive/refs/tags/v0.30.1.tar.gz";
+    hash = "sha256-5q77ersAJnPPpVChvntnqEly1/ek2KfX2iukTPUbKHc=";
   };
 
-  # cpp-jwt - JWT library (crueter fork)
+  # cpp-jwt - JWT library
   cpp-jwt = pkgs.fetchzip {
-    url = "https://github.com/crueter/cpp-jwt/archive/9eaea6328f.tar.gz";
-    hash = "sha256-r4Kf7k0tfDzrFSCS6f8bmEAmzctXsMBSd+t9xlqfvNs=";
+    url = "https://github.com/arun11299/cpp-jwt/archive/7f24eb4c32.tar.gz";
+    hash = "sha256-qYgUTWKJAXDhDgkt3Y00QPyIkCalyZFH+dbF17CZGnE=";
   };
 }

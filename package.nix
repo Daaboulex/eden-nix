@@ -12,7 +12,6 @@
 , qt6Packages
 # Vulkan
 , vulkan-loader
-, vulkan-headers
 , glslang
 # System deps
 , boost
@@ -63,12 +62,12 @@ stdenv.mkDerivation {
   buildInputs = [
     # Qt6
     qt6Packages.qtbase
+    qt6Packages.qtcharts
     qt6Packages.qtmultimedia
     qt6Packages.qtwayland
     qt6Packages.qtwebengine
 
-    # Vulkan
-    vulkan-headers
+    # Vulkan (loader only - headers are bundled via CPM for version matching)
     vulkan-loader
 
     # System libs
@@ -115,43 +114,45 @@ stdenv.mkDerivation {
 
     # Copy deps to CPM cache with correct version paths
     ${lib.optionalString stdenv.hostPlatform.isx86_64 ''
-      copyDep ${deps.xbyak} xbyak/7.22
+      copyDep ${deps.xbyak} xbyak/7.33.2
     ''}
 
     copyDep ${deps.enet} enet/1.3.18
     copyDep ${deps.simpleini} simpleini/4.25
     copyDep ${deps.cubeb} cubeb/fa02
-    copyDep ${deps.discord-rpc} discordrpc/1cf7
-    copyDep ${deps.spirv-headers} spirv-headers/01e0
-    copyDep ${deps.spirv-tools} spirv-tools/2fa2
+    copyDep ${deps.discord-rpc} discordrpc/0d8b
+    copyDep ${deps.spirv-headers} spirv-headers/04f1
+    copyDep ${deps.spirv-tools} spirv-tools/0a7e
     copyDep ${deps.vma} vulkanmemoryallocator/3.3.0
-    copyDep ${deps.unordered-dense} unordered_dense/4.8.1
+    copyDep ${deps.unordered-dense} unordered_dense/7b55
     copyDep ${deps.gamemode} gamemode/ce6f
     copyDep ${deps.frozen} frozen/61dc
-    copyDep ${deps.quazip} quazip-qt6/f838
+    copyDep ${deps.quazip} quazip-qt6/2e95
     copyDep ${deps.mcl} mcl/7b08
     copyDep ${deps.libusb} libusb/1.0.29
-    copyDep ${deps.httplib} httplib/0.28.0
-    copyDep ${deps.cpp-jwt} cpp-jwt/9eae
+    copyDep ${deps.httplib} httplib/0.30.1
+    copyDep ${deps.cpp-jwt} cpp-jwt/7f24
 
     # Archives that need extraction (fetchurl - not directories)
     extractDep ${deps.mbedtls} mbedtls/3.6.4
     extractDep ${deps.sirit} sirit/1.0.3
     extractDep ${deps.nx-tzdb} nx_tzdb/121125
 
-    # VulkanUtilityHeaders - zst archive without subdirectory, extract without strip
-    mkdir -p "$CPM_SOURCE_CACHE/vulkanutilitylibraries/1.4.328"
-    zstd -d ${deps.vulkan-utility-libraries} -c | tar -x -C "$CPM_SOURCE_CACHE/vulkanutilitylibraries/1.4.328"
-    chmod -R u+w "$CPM_SOURCE_CACHE/vulkanutilitylibraries/1.4.328"
+    # Vulkan deps - both must be bundled together to satisfy AddDependentPackages
+    copyDep ${deps.vulkan-headers} vulkanheaders/1.4.342
+    copyDep ${deps.vulkan-utility-libraries} vulkanutilitylibraries/1.4.342
 
     ${lib.optionalString stdenv.hostPlatform.isAarch64 ''
-      copyDep ${deps.oaknut} oaknut/2.0.2
+      copyDep ${deps.oaknut} oaknut/2.0.3
     ''}
   '';
 
   cmakeFlags = [
     # Disable network fetching - use pre-populated cache
     "-DFETCHCONTENT_FULLY_DISCONNECTED=ON"
+
+    # Force bundled Vulkan headers to match bundled utility libraries
+    "-DVulkanHeaders_FORCE_BUNDLED=ON"
 
     # Build options
     "-DYUZU_TESTS=OFF"
