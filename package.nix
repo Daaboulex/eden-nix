@@ -32,9 +32,9 @@
 
 let
   # Auto-updated by GitHub Actions - do not edit manually
-  # Last updated: 2026-02-25
-  rev = "0ff84ef312d44b7dc6e3a805dee6a00c03c1df7c";
-  version = "0.0.4-unstable-2026-02-25";
+  # Last updated: 2026-03-02
+  rev = "464212393e296c59488171692df1d096ecfa5607";
+  version = "0.0.4-unstable-2026-03-02";
 in
 stdenv.mkDerivation {
   pname = "eden";
@@ -45,7 +45,7 @@ stdenv.mkDerivation {
     owner = "eden-emu";
     repo = "eden";
     inherit rev;
-    hash = "sha256-LHgdmHk8nunGp2SXT9kQOwZn7WrZXjJv/VYNMm+W/4s=";
+    hash = "sha256-MK5q9kpLd9FfOgqvdQjHjEx4Awxc9E20ff0dtqtuaDI=";
     fetchSubmodules = true;
   };
 
