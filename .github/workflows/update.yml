@@ -31,7 +31,7 @@ jobs:
           LATEST=$(curl -s "https://git.eden-emu.dev/api/v1/repos/eden-emu/eden/commits?limit=1" | jq -r '.[0].sha')
           echo "Latest commit: $LATEST"
           echo "commit=$LATEST" >> $GITHUB_OUTPUT
-          
+
           # Get current commit from package.nix
           CURRENT=$(grep -oP 'rev = "\K[^"]+' package.nix | head -1)
           echo "Current commit: $CURRENT"
@@ -48,24 +48,38 @@ jobs:
             echo "update=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: Fetch upstream version tag
+        if: steps.check.outputs.update == 'true'
+        id: version
+        run: |
+          # Get the latest release/tag to determine version prefix
+          VERSION=$(curl -s "https://git.eden-emu.dev/api/v1/repos/eden-emu/eden/releases?limit=1" | jq -r '.[0].tag_name // empty' | sed 's/^v//')
+          if [ -z "$VERSION" ]; then
+            # Fallback: extract from current package.nix
+            VERSION=$(grep -oP 'version = "\K[^-]+' package.nix | head -1)
+          fi
+          echo "Eden version prefix: $VERSION"
+          echo "prefix=$VERSION" >> $GITHUB_OUTPUT
+
       - name: Update package.nix
         if: steps.check.outputs.update == 'true'
         run: |
           NEW_COMMIT="${{ steps.get_commit.outputs.commit }}"
+          VERSION_PREFIX="${{ steps.version.outputs.prefix }}"
           TODAY=$(date +%Y-%m-%d)
-          
+
           # Update rev
           sed -i "s/rev = \"[^\"]*\";/rev = \"$NEW_COMMIT\";/" package.nix
-          
-          # Update version with date
-          sed -i "s/version = \"[^\"]*\";/version = \"0.0.4-unstable-$TODAY\";/" package.nix
-          
+
+          # Update version with date (use dynamic version prefix)
+          sed -i "s/version = \"[^\"]*\";/version = \"$VERSION_PREFIX-unstable-$TODAY\";/" package.nix
+
           # Update "Last updated" comment
           sed -i "s/# Last updated: .*/# Last updated: $TODAY/" package.nix
-          
+
           echo "Updated to commit: $NEW_COMMIT"
 
-      - name: Get new hash
+      - name: Get new source hash
         if: steps.check.outputs.update == 'true'
         id: hash
         run: |
@@ -80,18 +94,135 @@ jobs:
               hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
             }
           ' 2>&1 | grep -oP 'got:\s+\K\S+' || true)
-          
+
           if [ -n "$NEW_HASH" ]; then
             echo "New hash: $NEW_HASH"
             sed -i "s|hash = \"sha256-[^\"]*\";|hash = \"$NEW_HASH\";|" package.nix
           else
-            echo "Failed to get hash, will need manual fix"
+            echo "::warning::Failed to get source hash — manual fix required"
           fi
+
+      - name: Update CPM dependencies
+        if: steps.check.outputs.update == 'true'
+        run: |
+          NEW_COMMIT="${{ steps.get_commit.outputs.commit }}"
+
+          # Fetch the upstream cpmfile.json for the new commit
+          CPMFILE=$(curl -sf "https://git.eden-emu.dev/eden-emu/eden/raw/commit/$NEW_COMMIT/externals/cpmfile.json" || true)
+          if [ -z "$CPMFILE" ]; then
+            echo "::warning::Could not fetch upstream cpmfile.json — CPM deps not updated"
+            exit 0
+          fi
+
+          echo "$CPMFILE" > /tmp/cpmfile.json
+          echo "Fetched upstream cpmfile.json"
+
+          # Helper: update a fetchzip dep version (tag-based)
+          update_fetchzip_tag() {
+            local name="$1"      # key in cpmfile.json
+            local nix_attr="$2"  # attribute name in deps/default.nix
+            local repo="$3"      # GitHub repo path
+            local old_ver="$4"   # old version string
+
+            local new_ver
+            new_ver=$(jq -r --arg k "$name" '.[$k].git_version // empty' /tmp/cpmfile.json)
+            if [ -z "$new_ver" ] || [ "$new_ver" = "$old_ver" ]; then
+              return
+            fi
+
+            echo "Updating $nix_attr: $old_ver -> $new_ver"
+
+            local new_url="https://github.com/$repo/archive/refs/tags/v${new_ver}.tar.gz"
+            local new_hash
+            new_hash=$(nix-prefetch-url --unpack "$new_url" 2>/dev/null | xargs nix hash convert --hash-algo sha256 --to sri 2>/dev/null || true)
+            if [ -z "$new_hash" ]; then
+              echo "::warning::Failed to prefetch $nix_attr $new_ver"
+              return
+            fi
+
+            # Update URL and hash in deps/default.nix
+            sed -i "/$nix_attr = pkgs.fetchzip/,/};/{
+              s|/v${old_ver}.tar.gz|/v${new_ver}.tar.gz|
+              s|hash = \"sha256-[^\"]*\"|hash = \"$new_hash\"|
+            }" deps/default.nix
+
+            # Update CPM cache path in package.nix
+            sed -i "s|$nix_attr}[[:space:]]*[a-zA-Z_-]*/[^ ]*${old_ver}|$nix_attr} $(echo "$nix_attr" | tr '[:upper:]' '[:lower:]')/${new_ver}|g" package.nix
+          }
+
+          # Helper: update a fetchurl dep version (release artifact)
+          update_fetchurl_release() {
+            local name="$1"
+            local nix_attr="$2"
+            local repo="$3"
+            local old_ver="$4"
+
+            local new_ver
+            new_ver=$(jq -r --arg k "$name" '.[$k].git_version // empty' /tmp/cpmfile.json)
+            if [ -z "$new_ver" ] || [ "$new_ver" = "$old_ver" ]; then
+              return
+            fi
+
+            echo "Updating $nix_attr: $old_ver -> $new_ver"
+
+            # Construct artifact URL from cpmfile pattern
+            local artifact
+            artifact=$(jq -r --arg k "$name" '.[$k].artifact // empty' /tmp/cpmfile.json | sed "s/%VERSION%/$new_ver/g")
+            if [ -z "$artifact" ]; then
+              echo "::warning::No artifact pattern for $nix_attr"
+              return
+            fi
+
+            local new_url="https://github.com/$repo/releases/download/v${new_ver}/${artifact}"
+            local new_hash
+            new_hash=$(nix-prefetch-url "$new_url" 2>/dev/null | xargs nix hash convert --hash-algo sha256 --to sri 2>/dev/null || true)
+            if [ -z "$new_hash" ]; then
+              echo "::warning::Failed to prefetch $nix_attr $new_ver"
+              return
+            fi
+
+            # Update deps/default.nix
+            sed -i "/$nix_attr = pkgs.fetchurl/,/};/{
+              s|${old_ver}|${new_ver}|g
+              s|hash = \"sha256-[^\"]*\"|hash = \"$new_hash\"|
+            }" deps/default.nix
+
+            # Update CPM cache path in package.nix
+            sed -i "s|${nix_attr}}[[:space:]]*[a-zA-Z_-]*/${old_ver}|${nix_attr}} $(echo "$nix_attr" | tr '[:upper:]' '[:lower:]')/${new_ver}|g" package.nix
+          }
+
+          # Update tag-based fetchzip deps
+          update_fetchzip_tag "xbyak" "xbyak" "herumi/xbyak" \
+            "$(grep -oP 'xbyak.*?/v\K[0-9.]+' deps/default.nix)"
+
+          update_fetchzip_tag "httplib" "httplib" "yhirose/cpp-httplib" \
+            "$(grep -oP 'cpp-httplib.*?/v\K[0-9.]+' deps/default.nix)"
+
+          update_fetchzip_tag "vulkan-headers" "vulkan-headers" "KhronosGroup/Vulkan-Headers" \
+            "$(grep -oP 'Vulkan-Headers.*?/v\K[0-9.]+' deps/default.nix)"
+
+          update_fetchzip_tag "vulkan-utility-libraries" "vulkan-utility-libraries" "KhronosGroup/Vulkan-Utility-Libraries" \
+            "$(grep -oP 'Vulkan-Utility-Libraries.*?/v\K[0-9.]+' deps/default.nix)"
+
+          update_fetchzip_tag "oaknut" "oaknut" "eden-emulator/oaknut" \
+            "$(grep -oP 'oaknut.*?/v\K[0-9.]+' deps/default.nix)"
+
+          # Update release-artifact fetchurl deps
+          update_fetchurl_release "sirit" "sirit" "eden-emulator/sirit" \
+            "$(grep -oP 'sirit.*?/v\K[0-9.]+' deps/default.nix)"
+
+          echo "CPM dependency update complete"
 
       - name: Test build
         if: steps.check.outputs.update == 'true'
+        id: build
         run: |
-          nix build --show-trace 2>&1 | tail -50 || echo "Build may require manual fixes"
+          if nix build --show-trace 2>&1 | tail -100; then
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "status=failed" >> $GITHUB_OUTPUT
+            echo "::warning::Build failed — PR will need manual fixes"
+          fi
 
       - name: Create Pull Request
         if: steps.check.outputs.update == 'true'
@@ -102,10 +233,11 @@ jobs:
           title: "Update Eden to latest master"
           body: |
             Automated update to latest Eden master commit.
-            
+
             **New commit:** `${{ steps.get_commit.outputs.commit }}`
             **Previous commit:** `${{ steps.get_commit.outputs.current }}`
-            
+            **Build status:** ${{ steps.build.outputs.status || 'skipped' }}
+
             Please verify the build works before merging.
           branch: auto-update/eden
           delete-branch: true

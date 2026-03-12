@@ -79,11 +79,10 @@ The Vulkan dependencies (`vulkan-headers` and `vulkan-utility-libraries`) are bu
 This flake automatically tracks the latest Eden master branch via GitHub Actions:
 - A workflow runs daily at 6 AM UTC
 - If a new commit is found, a PR is automatically created
-- CPM dependency hashes are updated as needed
+- Source hash and CPM dependency versions/hashes are updated automatically
+- Build is tested before the PR is created
 
 To manually trigger an update: Go to Actions → "Update Eden" → "Run workflow"
-
-> **Note:** When Eden upstream bumps CPM dependency versions in `cpmfile.json`, `deps/default.nix` and the cache paths in `package.nix` must be updated manually.
 
 ## License
 

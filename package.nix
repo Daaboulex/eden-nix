@@ -28,6 +28,10 @@
 , zstd
 , libzip
 , nv-codec-headers-12
+# Audio backends (cubeb needs these to build functional audio output)
+, alsa-lib
+, libpulseaudio
+, pipewire
 }:
 
 let
@@ -85,6 +89,11 @@ stdenv.mkDerivation {
     SDL2
     zlib
     zstd
+
+    # Audio backends for cubeb
+    alsa-lib
+    libpulseaudio
+    pipewire
   ];
 
   # Pre-populate CPM cache with our pre-fetched deps
@@ -193,8 +202,13 @@ stdenv.mkDerivation {
   ];
 
   postInstall = ''
-    # Install udev rules for controller support
-    install -Dm644 $src/dist/72-eden-input.rules $out/lib/udev/rules.d/72-eden-input.rules || true
+    # Install udev rules for controller support (upstream still uses yuzu naming)
+    install -Dm644 $src/dist/72-yuzu-input.rules $out/lib/udev/rules.d/72-eden-input.rules
+
+    # Install desktop file, icon, and appstream metadata (CMake doesn't install these)
+    install -Dm644 $src/dist/dev.eden_emu.eden.desktop $out/share/applications/dev.eden_emu.eden.desktop
+    install -Dm644 $src/dist/dev.eden_emu.eden.svg $out/share/icons/hicolor/scalable/apps/dev.eden_emu.eden.svg
+    install -Dm644 $src/dist/dev.eden_emu.eden.metainfo.xml $out/share/metainfo/dev.eden_emu.eden.metainfo.xml
   '';
 
   meta = with lib; {
