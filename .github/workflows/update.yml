@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
+      issues: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -81,7 +81,6 @@ jobs:
 
       - name: Get new source hash
         if: steps.check.outputs.update == 'true'
-        id: hash
         run: |
           # Try to build and capture the hash error
           NEW_HASH=$(nix build --impure --expr '
@@ -99,7 +98,8 @@ jobs:
             echo "New hash: $NEW_HASH"
             sed -i "s|hash = \"sha256-[^\"]*\";|hash = \"$NEW_HASH\";|" package.nix
           else
-            echo "::warning::Failed to get source hash — manual fix required"
+            echo "::error::Failed to get source hash"
+            exit 1
           fi
 
       - name: Update CPM dependencies
@@ -216,28 +216,36 @@ jobs:
       - name: Test build
         if: steps.check.outputs.update == 'true'
         id: build
+        continue-on-error: true
+        run: nix build --show-trace 2>&1 | tail -100
+
+      - name: Push update
+        if: steps.check.outputs.update == 'true' && steps.build.outcome == 'success'
         run: |
-          if nix build --show-trace 2>&1 | tail -100; then
-            echo "status=success" >> $GITHUB_OUTPUT
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.nix deps/default.nix
+          git commit -m "chore: update eden to ${{ steps.get_commit.outputs.commit }}"
+          git push
+
+      - name: Open issue on failure
+        if: steps.check.outputs.update == 'true' && steps.build.outcome == 'failure'
+        run: |
+          # Check if an issue already exists
+          EXISTING=$(gh issue list --search "Eden update failed" --state open --json number --jq '.[0].number' || true)
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "Still failing at commit \`${{ steps.get_commit.outputs.commit }}\` ($(date +%Y-%m-%d))"
           else
-            echo "status=failed" >> $GITHUB_OUTPUT
-            echo "::warning::Build failed — PR will need manual fixes"
+            gh issue create \
+              --title "Eden update failed — ${{ steps.get_commit.outputs.commit }}" \
+              --body "$(cat <<'ISSUE_EOF'
+          Automated update to [${{ steps.get_commit.outputs.commit }}](https://git.eden-emu.dev/eden-emu/eden/commit/${{ steps.get_commit.outputs.commit }}) failed to build.
+
+          **Previous working commit:** `${{ steps.get_commit.outputs.current }}`
+
+          Check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for build logs.
+          ISSUE_EOF
+          )"
           fi
-
-      - name: Create Pull Request
-        if: steps.check.outputs.update == 'true'
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore: update eden to ${{ steps.get_commit.outputs.commit }}"
-          title: "Update Eden to latest master"
-          body: |
-            Automated update to latest Eden master commit.
-
-            **New commit:** `${{ steps.get_commit.outputs.commit }}`
-            **Previous commit:** `${{ steps.get_commit.outputs.current }}`
-            **Build status:** ${{ steps.build.outputs.status || 'skipped' }}
-
-            Please verify the build works before merging.
-          branch: auto-update/eden
-          delete-branch: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
