@@ -127,7 +127,7 @@
   # httplib - HTTP library (needed by qt_common)
   httplib = pkgs.fetchzip {
     url = "https://github.com/yhirose/cpp-httplib/archive/refs/tags/v0.30.1.tar.gz";
-    hash = "sha256-I7mfT4Eb5sXUURReq3nzQRUhI4sMx4wQpdJBw+vOA/s=";
+    hash = "sha256-5q77ersAJnPPpVChvntnqEly1/ek2KfX2iukTPUbKHc=";
   };
 
   # cpp-jwt - JWT library
