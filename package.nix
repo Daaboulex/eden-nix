@@ -1,5 +1,5 @@
 # Eden Emulator Package for NixOS
-# Based on Eden v0.0.4 from https://git.eden-emu.dev/eden-emu/eden
+# Based on Eden from https://git.eden-emu.dev/eden-emu/eden
 { lib
 , stdenv
 , fetchFromGitea
@@ -28,6 +28,7 @@
 , zstd
 , libzip
 , nv-codec-headers-12
+, protobuf
 # Audio backends (cubeb needs these to build functional audio output)
 , alsa-lib
 , libpulseaudio
@@ -61,6 +62,7 @@ stdenv.mkDerivation {
     makeWrapper
     qt6Packages.qttools
     glslang
+    protobuf
   ];
 
   buildInputs = [
@@ -85,6 +87,7 @@ stdenv.mkDerivation {
     lz4
     nlohmann_json
     nv-codec-headers-12
+    protobuf
     openssl
     SDL2
     zlib
@@ -123,7 +126,7 @@ stdenv.mkDerivation {
 
     # Copy deps to CPM cache with correct version paths
     ${lib.optionalString stdenv.hostPlatform.isx86_64 ''
-      copyDep ${deps.xbyak} xbyak/7.33.2
+      copyDep ${deps.xbyak} xbyak/7.35.2
     ''}
 
     copyDep ${deps.enet} enet/1.3.18
@@ -139,7 +142,7 @@ stdenv.mkDerivation {
     copyDep ${deps.quazip} quazip-qt6/2e95
     copyDep ${deps.mcl} mcl/7b08
     copyDep ${deps.libusb} libusb/1.0.29
-    copyDep ${deps.httplib} httplib/0.30.1
+    copyDep ${deps.httplib} httplib/0.37.0
     copyDep ${deps.cpp-jwt} cpp-jwt/7f24
 
     # Archives that need extraction (fetchurl - not directories)
@@ -148,8 +151,8 @@ stdenv.mkDerivation {
     extractDep ${deps.nx-tzdb} nx_tzdb/121125
 
     # Vulkan deps - both must be bundled together to satisfy AddDependentPackages
-    copyDep ${deps.vulkan-headers} vulkanheaders/1.4.342
-    copyDep ${deps.vulkan-utility-libraries} vulkanutilitylibraries/1.4.342
+    copyDep ${deps.vulkan-headers} vulkanheaders/1.4.345
+    copyDep ${deps.vulkan-utility-libraries} vulkanutilitylibraries/1.4.345
 
     ${lib.optionalString stdenv.hostPlatform.isAarch64 ''
       copyDep ${deps.oaknut} oaknut/2.0.3
