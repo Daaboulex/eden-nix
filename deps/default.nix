@@ -7,7 +7,7 @@
   # xbyak - JIT assembler for x86/x86_64
   xbyak = pkgs.fetchzip {
     url = "https://github.com/herumi/xbyak/archive/refs/tags/v7.33.2.tar.gz";
-    hash = "sha256-JE3Sc+l8amoVwOfj03KKiwsOfEiNPaFRrV4aXDcb3+g=";
+    hash = "sha256-7HFvZ6wr7X7K5rrw9k/LWXEazJ67Hm8IqO2edcEU1pI=";
   };
 
   # enet - Reliable UDP networking
@@ -79,13 +79,13 @@
   # vulkan-headers - Vulkan API headers (bundled to match vulkan-utility-libraries)
   vulkan-headers = pkgs.fetchzip {
     url = "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.342.tar.gz";
-    hash = "sha256-bZKNFiZMVYDxa6RKb1c/GxIR+eEFQAyYNaEptzQW5TE=";
+    hash = "sha256-keE8NmUG4UsDwb3vn7IB95Oo576ziH70n8fbrQx/6HA=";
   };
 
   # vulkan-utility-libraries - Vulkan utility libraries
   vulkan-utility-libraries = pkgs.fetchzip {
     url = "https://github.com/KhronosGroup/Vulkan-Utility-Libraries/archive/refs/tags/v1.4.342.tar.gz";
-    hash = "sha256-4XsQN94JsQXFGwJKp3W2gdTCCxUZrpCKiRVXzxL+Qs0=";
+    hash = "sha256-M26HqTsnXa3Hm7H+asT7MTC/Z448J0BusegZnaXXCDo=";
   };
 
   # frozen - header-only constexpr containers
