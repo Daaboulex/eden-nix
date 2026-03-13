@@ -36,9 +36,9 @@
 
 let
   # Auto-updated by GitHub Actions - do not edit manually
-  # Last updated: 2026-03-04
-  rev = "9d2341eaeafb275d3d3e4692812fe121ae24e2e3";
-  version = "0.0.4-unstable-2026-03-04";
+  # Last updated: 2026-03-13
+  rev = "98604d369a33bfa9246e40ed08b5d08ed82abfdf";
+  version = "0.2.0-rc1-unstable-2026-03-13";
 in
 stdenv.mkDerivation {
   pname = "eden";
@@ -49,7 +49,7 @@ stdenv.mkDerivation {
     owner = "eden-emu";
     repo = "eden";
     inherit rev;
-    hash = "sha256-tpLT2kPHvTzjbirQ20aPynUZYv5Mg0gI+TcTw24DtAc=";
+    hash = "sha256-yjVNqL7hyhdbN4+IQAGxH2qfxgQK16/4ZsxrvQRM0QA=";
     fetchSubmodules = true;
   };
 
@@ -144,7 +144,7 @@ stdenv.mkDerivation {
 
     # Archives that need extraction (fetchurl - not directories)
     extractDep ${deps.mbedtls} mbedtls/3.6.4
-    extractDep ${deps.sirit} sirit/1.0.3
+    extractDep ${deps.sirit} sirit/1.0.4
     extractDep ${deps.nx-tzdb} nx_tzdb/121125
 
     # Vulkan deps - both must be bundled together to satisfy AddDependentPackages

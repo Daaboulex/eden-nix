@@ -7,7 +7,7 @@
   # xbyak - JIT assembler for x86/x86_64
   xbyak = pkgs.fetchzip {
     url = "https://github.com/herumi/xbyak/archive/refs/tags/v7.33.2.tar.gz";
-    hash = "sha256-7HFvZ6wr7X7K5rrw9k/LWXEazJ67Hm8IqO2edcEU1pI=";
+    hash = "sha256-JE3Sc+l8amoVwOfj03KKiwsOfEiNPaFRrV4aXDcb3+g=";
   };
 
   # enet - Reliable UDP networking
@@ -54,8 +54,8 @@
 
   # sirit - SPIR-V IR builder (Eden fork)
   sirit = pkgs.fetchurl {
-    url = "https://github.com/eden-emulator/sirit/releases/download/v1.0.3/sirit-source-1.0.3.tar.zst";
-    hash = "sha256-hwKb3M9XiTAJKZ9KoOjgROWerwi1EVpFhkvQPYxJN7M=";
+    url = "https://github.com/eden-emulator/sirit/releases/download/v1.0.4/sirit-source-1.0.4.tar.zst";
+    hash = "sha256-baovCDOqQxd+1U1INsDEJjxhPtZnx5JWSPY7DguYqvY=";
   };
 
   # VulkanMemoryAllocator
@@ -79,13 +79,13 @@
   # vulkan-headers - Vulkan API headers (bundled to match vulkan-utility-libraries)
   vulkan-headers = pkgs.fetchzip {
     url = "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.342.tar.gz";
-    hash = "sha256-keE8NmUG4UsDwb3vn7IB95Oo576ziH70n8fbrQx/6HA=";
+    hash = "sha256-bZKNFiZMVYDxa6RKb1c/GxIR+eEFQAyYNaEptzQW5TE=";
   };
 
   # vulkan-utility-libraries - Vulkan utility libraries
   vulkan-utility-libraries = pkgs.fetchzip {
     url = "https://github.com/KhronosGroup/Vulkan-Utility-Libraries/archive/refs/tags/v1.4.342.tar.gz";
-    hash = "sha256-M26HqTsnXa3Hm7H+asT7MTC/Z448J0BusegZnaXXCDo=";
+    hash = "sha256-4XsQN94JsQXFGwJKp3W2gdTCCxUZrpCKiRVXzxL+Qs0=";
   };
 
   # frozen - header-only constexpr containers
@@ -127,7 +127,7 @@
   # httplib - HTTP library (needed by qt_common)
   httplib = pkgs.fetchzip {
     url = "https://github.com/yhirose/cpp-httplib/archive/refs/tags/v0.30.1.tar.gz";
-    hash = "sha256-5q77ersAJnPPpVChvntnqEly1/ek2KfX2iukTPUbKHc=";
+    hash = "sha256-I7mfT4Eb5sXUURReq3nzQRUhI4sMx4wQpdJBw+vOA/s=";
   };
 
   # cpp-jwt - JWT library
