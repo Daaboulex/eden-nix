@@ -61,7 +61,7 @@ jobs:
           echo "Eden version prefix: $VERSION"
           echo "prefix=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Update package.nix
+      - name: Update package.nix source
         if: steps.check.outputs.update == 'true'
         run: |
           NEW_COMMIT="${{ steps.get_commit.outputs.commit }}"
@@ -71,18 +71,17 @@ jobs:
           # Update rev
           sed -i "s/rev = \"[^\"]*\";/rev = \"$NEW_COMMIT\";/" package.nix
 
-          # Update version with date (use dynamic version prefix)
+          # Update version with date
           sed -i "s/version = \"[^\"]*\";/version = \"$VERSION_PREFIX-unstable-$TODAY\";/" package.nix
 
           # Update "Last updated" comment
           sed -i "s/# Last updated: .*/# Last updated: $TODAY/" package.nix
 
-          echo "Updated to commit: $NEW_COMMIT"
+          echo "Updated source to commit: $NEW_COMMIT"
 
       - name: Get new source hash
         if: steps.check.outputs.update == 'true'
         run: |
-          # Try to build and capture the hash error
           NEW_HASH=$(nix build --impure --expr '
             let
               pkgs = import <nixpkgs> {};
@@ -95,129 +94,67 @@ jobs:
           ' 2>&1 | grep -oP 'got:\s+\K\S+' || true)
 
           if [ -n "$NEW_HASH" ]; then
-            echo "New hash: $NEW_HASH"
-            sed -i "s|hash = \"sha256-[^\"]*\";|hash = \"$NEW_HASH\";|" package.nix
+            echo "New source hash: $NEW_HASH"
+            # Only update the source hash (first sha256 in fetchFromGitea block)
+            sed -i "0,/hash = \"sha256-[^\"]*\";/{s|hash = \"sha256-[^\"]*\";|hash = \"$NEW_HASH\";|}" package.nix
           else
             echo "::error::Failed to get source hash"
             exit 1
           fi
 
-      - name: Update CPM dependencies
+      - name: Sync CPM dependencies
         if: steps.check.outputs.update == 'true'
+        id: sync_deps
         run: |
           NEW_COMMIT="${{ steps.get_commit.outputs.commit }}"
+          CURRENT_COMMIT="${{ steps.get_commit.outputs.current }}"
 
           # Fetch the upstream cpmfile.json for the new commit
-          CPMFILE=$(curl -sf "https://git.eden-emu.dev/eden-emu/eden/raw/commit/$NEW_COMMIT/externals/cpmfile.json" || true)
-          if [ -z "$CPMFILE" ]; then
+          CPMFILE_URL="https://git.eden-emu.dev/eden-emu/eden/raw/commit/$NEW_COMMIT/externals/cpmfile.json"
+          if ! curl -sf "$CPMFILE_URL" -o /tmp/cpmfile.json; then
             echo "::warning::Could not fetch upstream cpmfile.json — CPM deps not updated"
+            echo "cpm_synced=false" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          echo "$CPMFILE" > /tmp/cpmfile.json
           echo "Fetched upstream cpmfile.json"
 
-          # Helper: update a fetchzip dep version (tag-based)
-          update_fetchzip_tag() {
-            local name="$1"      # key in cpmfile.json
-            local nix_attr="$2"  # attribute name in deps/default.nix
-            local repo="$3"      # GitHub repo path
-            local old_ver="$4"   # old version string
+          # Run the sync script — updates deps/default.nix and package.nix
+          SYNC_EXIT=0
+          python3 scripts/sync-deps.py /tmp/cpmfile.json "$CURRENT_COMMIT" "$NEW_COMMIT" 2>&1 | tee /tmp/sync-output.txt || SYNC_EXIT=$?
 
-            local new_ver
-            new_ver=$(jq -r --arg k "$name" '.[$k].git_version // empty' /tmp/cpmfile.json)
-            if [ -z "$new_ver" ] || [ "$new_ver" = "$old_ver" ]; then
-              return
-            fi
+          echo "cpm_synced=true" >> $GITHUB_OUTPUT
 
-            echo "Updating $nix_attr: $old_ver -> $new_ver"
+          if [ -f .sync-output.json ]; then
+            # Extract counts for the summary
+            UPDATED=$(jq -r '.updated | length' .sync-output.json)
+            WARNINGS=$(jq -r '.warnings | length' .sync-output.json)
+            NEW_DEPS=$(jq -r '.new_deps | length' .sync-output.json)
+            ERRORS=$(jq -r '.errors | length' .sync-output.json)
 
-            local new_url="https://github.com/$repo/archive/refs/tags/v${new_ver}.tar.gz"
-            local new_hash
-            new_hash=$(nix-prefetch-url --unpack "$new_url" 2>/dev/null | xargs nix hash convert --hash-algo sha256 --to sri 2>/dev/null || true)
-            if [ -z "$new_hash" ]; then
-              echo "::warning::Failed to prefetch $nix_attr $new_ver"
-              return
-            fi
+            echo "updated=$UPDATED" >> $GITHUB_OUTPUT
+            echo "warnings=$WARNINGS" >> $GITHUB_OUTPUT
+            echo "new_deps=$NEW_DEPS" >> $GITHUB_OUTPUT
+            echo "sync_errors=$ERRORS" >> $GITHUB_OUTPUT
 
-            # Update URL and hash in deps/default.nix
-            sed -i "/$nix_attr = pkgs.fetchzip/,/};/{
-              s|/v${old_ver}.tar.gz|/v${new_ver}.tar.gz|
-              s|hash = \"sha256-[^\"]*\"|hash = \"$new_hash\"|
-            }" deps/default.nix
+            # Save warnings for issue body
+            jq -r '.warnings[]' .sync-output.json > /tmp/dep-warnings.txt 2>/dev/null || true
+            jq -r '.new_deps[]' .sync-output.json > /tmp/new-deps.txt 2>/dev/null || true
+          fi
 
-            # Update CPM cache path in package.nix
-            sed -i "s|$nix_attr}[[:space:]]*[a-zA-Z_-]*/[^ ]*${old_ver}|$nix_attr} $(echo "$nix_attr" | tr '[:upper:]' '[:lower:]')/${new_ver}|g" package.nix
-          }
-
-          # Helper: update a fetchurl dep version (release artifact)
-          update_fetchurl_release() {
-            local name="$1"
-            local nix_attr="$2"
-            local repo="$3"
-            local old_ver="$4"
-
-            local new_ver
-            new_ver=$(jq -r --arg k "$name" '.[$k].git_version // empty' /tmp/cpmfile.json)
-            if [ -z "$new_ver" ] || [ "$new_ver" = "$old_ver" ]; then
-              return
-            fi
-
-            echo "Updating $nix_attr: $old_ver -> $new_ver"
-
-            # Construct artifact URL from cpmfile pattern
-            local artifact
-            artifact=$(jq -r --arg k "$name" '.[$k].artifact // empty' /tmp/cpmfile.json | sed "s/%VERSION%/$new_ver/g")
-            if [ -z "$artifact" ]; then
-              echo "::warning::No artifact pattern for $nix_attr"
-              return
-            fi
-
-            local new_url="https://github.com/$repo/releases/download/v${new_ver}/${artifact}"
-            local new_hash
-            new_hash=$(nix-prefetch-url "$new_url" 2>/dev/null | xargs nix hash convert --hash-algo sha256 --to sri 2>/dev/null || true)
-            if [ -z "$new_hash" ]; then
-              echo "::warning::Failed to prefetch $nix_attr $new_ver"
-              return
-            fi
-
-            # Update deps/default.nix
-            sed -i "/$nix_attr = pkgs.fetchurl/,/};/{
-              s|${old_ver}|${new_ver}|g
-              s|hash = \"sha256-[^\"]*\"|hash = \"$new_hash\"|
-            }" deps/default.nix
-
-            # Update CPM cache path in package.nix
-            sed -i "s|${nix_attr}}[[:space:]]*[a-zA-Z_-]*/${old_ver}|${nix_attr}} $(echo "$nix_attr" | tr '[:upper:]' '[:lower:]')/${new_ver}|g" package.nix
-          }
-
-          # Update tag-based fetchzip deps
-          update_fetchzip_tag "xbyak" "xbyak" "herumi/xbyak" \
-            "$(grep -oP 'xbyak.*?/v\K[0-9.]+' deps/default.nix)"
-
-          update_fetchzip_tag "httplib" "httplib" "yhirose/cpp-httplib" \
-            "$(grep -oP 'cpp-httplib.*?/v\K[0-9.]+' deps/default.nix)"
-
-          update_fetchzip_tag "vulkan-headers" "vulkan-headers" "KhronosGroup/Vulkan-Headers" \
-            "$(grep -oP 'Vulkan-Headers.*?/v\K[0-9.]+' deps/default.nix)"
-
-          update_fetchzip_tag "vulkan-utility-libraries" "vulkan-utility-libraries" "KhronosGroup/Vulkan-Utility-Libraries" \
-            "$(grep -oP 'Vulkan-Utility-Libraries.*?/v\K[0-9.]+' deps/default.nix)"
-
-          update_fetchzip_tag "oaknut" "oaknut" "eden-emulator/oaknut" \
-            "$(grep -oP 'oaknut.*?/v\K[0-9.]+' deps/default.nix)"
-
-          # Update release-artifact fetchurl deps
-          update_fetchurl_release "sirit" "sirit" "eden-emulator/sirit" \
-            "$(grep -oP 'sirit.*?/v\K[0-9.]+' deps/default.nix)"
-
-          echo "CPM dependency update complete"
+          # Exit 2 = new deps detected (non-fatal, build may still succeed)
+          # Exit 1 = hash prefetch error (fatal)
+          if [ "$SYNC_EXIT" -eq 1 ]; then
+            echo "::error::Dependency sync failed — see output above"
+            exit 1
+          fi
 
       - name: Test build
         if: steps.check.outputs.update == 'true'
         id: build
         continue-on-error: true
-        run: nix build --show-trace 2>&1 | tail -100
+        run: |
+          nix build --show-trace 2>&1 | tee /tmp/build-output.txt | tail -100
 
       - name: Push update
         if: steps.check.outputs.update == 'true' && steps.build.outcome == 'success'
@@ -225,27 +162,93 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add package.nix deps/default.nix
-          git commit -m "chore: update eden to ${{ steps.get_commit.outputs.commit }}"
+          git commit -m "chore: update eden to $(echo ${{ steps.get_commit.outputs.commit }} | head -c 12)"
           git push
 
       - name: Open issue on failure
         if: steps.check.outputs.update == 'true' && steps.build.outcome == 'failure'
         run: |
-          # Check if an issue already exists
+          NEW_COMMIT="${{ steps.get_commit.outputs.commit }}"
+          CURRENT_COMMIT="${{ steps.get_commit.outputs.current }}"
+
+          # Build the issue body with diagnostic info
+          BODY="Automated update to [\`${NEW_COMMIT:0:12}\`](https://git.eden-emu.dev/eden-emu/eden/commit/$NEW_COMMIT) failed to build."
+          BODY="$BODY
+
+          **Previous working commit:** \`$CURRENT_COMMIT\`"
+
+          # Include dependency sync warnings if any
+          if [ -f /tmp/dep-warnings.txt ] && [ -s /tmp/dep-warnings.txt ]; then
+            BODY="$BODY
+
+          ### Dependency Warnings
+          \`\`\`
+          $(cat /tmp/dep-warnings.txt)
+          \`\`\`"
+          fi
+
+          # Include new deps if detected
+          if [ -f /tmp/new-deps.txt ] && [ -s /tmp/new-deps.txt ]; then
+            BODY="$BODY
+
+          ### New CPM Dependencies Detected
+          These were added upstream but are not in \`deps/default.nix\`:
+          $(while read -r dep; do echo "- \`$dep\`"; done < /tmp/new-deps.txt)"
+          fi
+
+          # Include build error tail
+          if [ -f /tmp/build-output.txt ]; then
+            BODY="$BODY
+
+          ### Build Output (last 50 lines)
+          \`\`\`
+          $(tail -50 /tmp/build-output.txt)
+          \`\`\`"
+          fi
+
+          BODY="$BODY
+
+          Check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for full logs."
+
+          # Check for existing open issue
           EXISTING=$(gh issue list --search "Eden update failed" --state open --json number --jq '.[0].number' || true)
           if [ -n "$EXISTING" ]; then
-            gh issue comment "$EXISTING" --body "Still failing at commit \`${{ steps.get_commit.outputs.commit }}\` ($(date +%Y-%m-%d))"
+            gh issue comment "$EXISTING" --body "$BODY"
           else
             gh issue create \
-              --title "Eden update failed — ${{ steps.get_commit.outputs.commit }}" \
-              --body "$(cat <<'ISSUE_EOF'
-          Automated update to [${{ steps.get_commit.outputs.commit }}](https://git.eden-emu.dev/eden-emu/eden/commit/${{ steps.get_commit.outputs.commit }}) failed to build.
+              --title "Eden update failed — ${NEW_COMMIT:0:12}" \
+              --body "$BODY"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-          **Previous working commit:** `${{ steps.get_commit.outputs.current }}`
+      - name: Warn about new deps (even on success)
+        if: steps.check.outputs.update == 'true' && steps.build.outcome == 'success' && steps.sync_deps.outputs.new_deps != '0'
+        run: |
+          # If build succeeded but new deps were detected, create an informational issue
+          NEW_COMMIT="${{ steps.get_commit.outputs.commit }}"
 
-          Check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for build logs.
-          ISSUE_EOF
-          )"
+          BODY="Build succeeded for [\`${NEW_COMMIT:0:12}\`](https://git.eden-emu.dev/eden-emu/eden/commit/$NEW_COMMIT), but new CPM dependencies were detected upstream that are not yet tracked.
+
+          These deps may be needed for future builds or specific features:
+
+          $(while read -r dep; do echo "- \`$dep\`"; done < /tmp/new-deps.txt)
+
+          ### Sync Script Output
+          \`\`\`
+          $(cat /tmp/sync-output.txt | tail -30)
+          \`\`\`
+
+          Review \`cpmfile.json\` and add the deps to \`deps/default.nix\` + \`package.nix\`, or add them to the \`SKIP_KEYS\` set in \`scripts/sync-deps.py\` if they're not needed."
+
+          EXISTING=$(gh issue list --search "New CPM dependencies detected" --state open --json number --jq '.[0].number' || true)
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "$BODY"
+          else
+            gh issue create \
+              --title "New CPM dependencies detected — review needed" \
+              --body "$BODY" \
+              --label "dependencies"
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

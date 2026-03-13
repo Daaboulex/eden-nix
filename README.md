@@ -77,12 +77,14 @@ The Vulkan dependencies (`vulkan-headers` and `vulkan-utility-libraries`) are bu
 ## Updating
 
 This flake automatically tracks the latest Eden master branch via GitHub Actions:
-- A workflow runs daily at 6 AM UTC
-- Source hash and CPM dependency versions/hashes are updated automatically
-- If the build passes, changes are pushed directly to main
-- If the build fails, a GitHub issue is opened with a link to the failing run
 
-To manually trigger an update: Go to Actions → "Update Eden" → "Run workflow"
+- A workflow runs daily at 6 AM UTC (or manually via Actions → "Update Eden" → "Run workflow")
+- `scripts/sync-deps.py` synchronizes all CPM dependencies with upstream `cpmfile.json` — tag-based, commit-based, and release artifact deps are all handled
+- URL + hash updates are atomic (can never desync)
+- New upstream CPM dependencies are detected and flagged for manual addition
+- CMakeLists.txt `find_package()` changes are diffed to catch new system dependency requirements
+- If the build passes, changes are pushed directly to main
+- If the build fails, a GitHub issue is opened with dependency warnings, new dep suggestions, and build output
 
 ## License
 
