@@ -32,39 +32,28 @@ A Nix flake that builds Eden from upstream master with full CI infrastructure:
 <!-- BEGIN generated:installation -->
 ## Installation
 
-### As a flake input
+Add as a flake input:
 
 ```nix
 {
-  inputs.eden.url = "github:daaboulex/eden-nix";
-
-  outputs = { nixpkgs, eden, ... }: {
-    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
-      modules = [
-        ({ pkgs, ... }: {
-          environment.systemPackages = [ eden.packages.${pkgs.system}.eden ];
-        })
-      ];
-    };
+  inputs.eden = {
+    url = "github:Daaboulex/eden-nix";
+    inputs.nixpkgs.follows = "nixpkgs";
   };
 }
 ```
 
-### Using the NixOS module
+Then add the overlay:
 
 ```nix
-{
-  imports = [ eden.nixosModules.default ];
-  programs.eden.enable = true;
-}
+nixpkgs.overlays = [ inputs.eden.overlays.default ];
 ```
 
-### Direct run
+Import the NixOS module:
 
-```bash
-nix run github:daaboulex/eden-nix
+```nix
+imports = [ inputs.eden.nixosModules.default ];
 ```
-
 <!-- END generated:installation -->
 
 ## Build from source
