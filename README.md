@@ -140,6 +140,9 @@ This flake automatically tracks the latest Eden master branch via GitHub Actions
 - If the build fails, a GitHub issue is opened with dependency warnings, new dep suggestions, and build output
 
 <!-- BEGIN generated:options -->
+## Options
+
+This module declares `programs.eden.enable`. See `flake.nix` for the module definition.
 <!-- END generated:options -->
 
 ## License
