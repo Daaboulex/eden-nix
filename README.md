@@ -89,6 +89,30 @@ Eden uses CPM (CMake Package Manager) to fetch dependencies at build time. Since
 
 The Vulkan dependencies (`vulkan-headers` and `vulkan-utility-libraries`) are bundled together via CPM to avoid version mismatches with system packages.
 
+## Usage
+
+Enable Eden via the NixOS module:
+
+```nix
+{
+  programs.eden = {
+    enable = true;
+  };
+}
+```
+
+This installs the Eden binary and creates a `.desktop` entry. Launch from your application menu or terminal:
+
+```bash
+eden                     # launch the GUI
+eden --help              # show CLI options
+```
+
+### First-time setup
+
+1. Place your Switch firmware in `~/.local/share/eden/nand/system/Contents/registered/`
+2. Place your `prod.keys` in `~/.local/share/eden/keys/`
+3. Add game files (NSP/XCI) via **File → Open** or the game directory setting
 ## Development
 
 ```bash
