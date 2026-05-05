@@ -1,0 +1,18 @@
+{
+  "package": "eden",
+  "upstream": {
+    "type": "gitea-commit",
+    "host": "git.eden-emu.dev",
+    "owner": "eden-emu",
+    "repo": "eden"
+  },
+  "packageFile": "package.nix",
+  "hashes": [
+    "hash"
+  ],
+  "verify": {
+    "binary": null,
+    "args": null,
+    "check": "elf"
+  }
+}
