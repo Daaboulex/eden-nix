@@ -1,23 +1,21 @@
 # eden-nix
 
-[![CI](https://github.com/Daaboulex/eden-nix/actions/workflows/ci.yml/badge.svg)](https://github.com/Daaboulex/eden-nix/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/Daaboulex/eden-nix)](./LICENSE)
-[![NixOS](https://img.shields.io/badge/NixOS-unstable-78C0E8?logo=nixos&logoColor=white)](https://nixos.org)
-[![Last commit](https://img.shields.io/github/last-commit/Daaboulex/eden-nix)](https://github.com/Daaboulex/eden-nix/commits)
-[![Stars](https://img.shields.io/github/stars/Daaboulex/eden-nix?style=flat)](https://github.com/Daaboulex/eden-nix/stargazers)
-[![Issues](https://img.shields.io/github/issues/Daaboulex/eden-nix)](https://github.com/Daaboulex/eden-nix/issues)
+<!-- BEGIN generated:badges -->
+[![NixOS unstable](https://img.shields.io/badge/NixOS-unstable-78C0E8?logo=nixos&logoColor=white)](https://nixos.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+<!-- END generated:badges -->
 
 Nix flake for the [Eden](https://eden-emu.dev) Nintendo Switch emulator.
 
+<!-- BEGIN generated:upstream -->
 ## Upstream
 
-This is a **Nix packaging wrapper** — not the original project. All credit for Eden goes to:
-
-- **Project**: [Eden Emulator](https://eden-emu.dev)
-- **Repository**: [git.eden-emu.dev/eden-emu/eden](https://git.eden-emu.dev/eden-emu/eden)
-- **License**: [GPL-3.0-or-later](https://git.eden-emu.dev/eden-emu/eden/src/branch/master/LICENSE.txt)
-
-Eden is a community-maintained fork that continues active development with performance improvements and new features.
+| | |
+|---|---|
+| **Project** | [eden-emu/eden](https://git.eden-emu.dev/eden-emu/eden) |
+| **License** | GPL-3.0 |
+| **Tracked** | Gitea commits |
+<!-- END generated:upstream -->
 
 ## What Is This?
 
@@ -31,6 +29,7 @@ A Nix flake that builds Eden from upstream master with full CI infrastructure:
 
 **This package tracks the latest master branch** with daily automated updates via GitHub Actions.
 
+<!-- BEGIN generated:installation -->
 ## Installation
 
 ### As a flake input
@@ -65,6 +64,8 @@ A Nix flake that builds Eden from upstream master with full CI infrastructure:
 ```bash
 nix run github:daaboulex/eden-nix
 ```
+
+<!-- END generated:installation -->
 
 ## Build from source
 
@@ -125,6 +126,15 @@ This flake automatically tracks the latest Eden master branch via GitHub Actions
 - If the build passes, changes are pushed directly to main
 - If the build fails, a GitHub issue is opened with dependency warnings, new dep suggestions, and build output
 
+<!-- BEGIN generated:options -->
+<!-- END generated:options -->
+
 ## License
 
 This packaging flake is [GPL-3.0-or-later](./LICENSE) licensed (matches upstream). Upstream Eden is [GPL-3.0-or-later](https://git.eden-emu.dev/eden-emu/eden/src/branch/master/LICENSE.txt).
+
+<!-- BEGIN generated:footer -->
+---
+
+*Maintained as part of the [Daaboulex](https://github.com/Daaboulex) NixOS ecosystem.*
+<!-- END generated:footer -->
