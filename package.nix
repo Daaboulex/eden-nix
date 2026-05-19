@@ -24,7 +24,6 @@
   lz4,
   nlohmann_json,
   openssl,
-  SDL2,
   zlib,
   zstd,
   libzip,
@@ -34,13 +33,32 @@
   alsa-lib,
   libpulseaudio,
   pipewire,
+  # SDL3 build deps — eden bundles + builds SDL3 from source (no system path)
+  dbus,
+  libGL,
+  libdrm,
+  libxkbcommon,
+  wayland,
+  wayland-protocols,
+  wayland-scanner,
+  libdecor,
+  udev,
+  libx11,
+  libxext,
+  libxcursor,
+  libxi,
+  libxrandr,
+  libxfixes,
+  libxscrnsaver,
+  libxcb,
+  libxtst,
 }:
 
 let
   # Auto-updated by GitHub Actions - do not edit manually
-  # Last updated: 2026-03-24
-  rev = "8f770618d27a053b8ce70e7fd5e699885e23325e";
-  version = "0.2.0-rc2-unstable-2026-03-24";
+  # Last updated: 2026-05-18
+  rev = "e875a3196b5fc525f357b387d3cb2f283b11b8a0";
+  version = "0.2.0-rc2-unstable-2026-05-18";
 in
 stdenv.mkDerivation {
   pname = "eden";
@@ -51,7 +69,7 @@ stdenv.mkDerivation {
     owner = "eden-emu";
     repo = "eden";
     inherit rev;
-    hash = "sha256-Ecqt94ih7dlkzGqmfou3hT0WcLERoqs8NgBZ3RDA4ns=";
+    hash = "sha256-6YlRa4DvaXq56HJmmE+zYkSpPHPcV+s91FxYGZ1KeHU=";
     fetchSubmodules = true;
   };
 
@@ -64,6 +82,7 @@ stdenv.mkDerivation {
     qt6Packages.qttools
     glslang
     protobuf
+    wayland-scanner
   ];
 
   buildInputs = [
@@ -90,7 +109,6 @@ stdenv.mkDerivation {
     nv-codec-headers-12
     protobuf
     openssl
-    SDL2
     zlib
     zstd
 
@@ -98,6 +116,25 @@ stdenv.mkDerivation {
     alsa-lib
     libpulseaudio
     pipewire
+
+    # SDL3 build deps — eden builds the bundled SDL3 source
+    dbus
+    libGL
+    libdrm
+    libxkbcommon
+    wayland
+    wayland-protocols
+    libdecor
+    udev
+    libx11
+    libxext
+    libxcursor
+    libxi
+    libxrandr
+    libxfixes
+    libxscrnsaver
+    libxcb
+    libxtst
   ];
 
   # Pre-populate CPM cache with our pre-fetched deps
@@ -145,6 +182,7 @@ stdenv.mkDerivation {
     copyDep ${deps.libusb} libusb/1.0.29
     copyDep ${deps.httplib} httplib/0.37.0
     copyDep ${deps.cpp-jwt} cpp-jwt/7f24
+    copyDep ${deps.sdl3} sdl3/3.4.8
 
     # Archives that need extraction (fetchurl - not directories)
     extractDep ${deps.mbedtls} mbedtls/3.6.4
@@ -181,10 +219,8 @@ stdenv.mkDerivation {
     "-DYUZU_USE_QT_MULTIMEDIA=ON"
     "-DYUZU_USE_QT_WEB_ENGINE=ON"
 
-    # SDL2 - use system
-    "-DENABLE_SDL2=ON"
-    "-DYUZU_USE_EXTERNAL_SDL2=OFF"
-    "-DYUZU_USE_BUNDLED_SDL2=OFF"
+    # SDL3 - built from the bundled CPM source (externals/cpmfile.json)
+    "-DYUZU_USE_BUNDLED_SDL3=OFF"
 
     # FFmpeg - use system
     "-DYUZU_USE_BUNDLED_FFMPEG=OFF"

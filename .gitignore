@@ -33,3 +33,6 @@ handoffs/
 deferred-work.jsonl
 __pycache__/
 *.pyc
+
+# sync-deps.py machine-readable run report (local only)
+.sync-output.json
