@@ -37,6 +37,21 @@ SKIP_KEYS = {
     "ffmpeg-ci",         # CI-only prebuilt entry
     "moltenvk",          # macOS Vulkan translation
     "sirit-ci",          # CI-only prebuilt entry
+    # System libraries — eden-nix uses the nixpkgs versions (package.nix
+    # buildInputs), not bundled CPM copies. Upstream moved these into
+    # cpmfile.json; we still satisfy them from nixpkgs.
+    "openssl",
+    "boost",
+    "boost_headers",
+    "fmt",
+    "lz4",
+    "nlohmann",
+    "zlib",
+    "zstd",
+    "opus",
+    # Not applicable to the Linux desktop build.
+    "llvm-mingw",                # Windows cross-compile toolchain
+    "vulkan-validation-layers",  # debug-only Vulkan layers, not bundled
 }
 
 # Nix attribute name overrides (cpmfile key -> attr in deps/default.nix)
