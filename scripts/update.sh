@@ -80,9 +80,12 @@ sed -i "s|version = \"${CURRENT_VERSION}\"|version = \"${NEW_VERSION}\"|" packag
 # from upstream cpmfile.json. Exit 2 = new deps that need manual addition.
 CPMFILE=$(mktemp --suffix=.json)
 trap 'rm -f "$CPMFILE"' EXIT
+# The bundled-dependency manifest is externals/cpmfile.json — sync-deps.py
+# consumes that one. (The repo-root cpmfile.json lists only system
+# libraries that eden-nix takes from nixpkgs.)
 if ! curl -sfL --retry 3 --retry-all-errors \
-  "https://$HOST/$OWNER/$REPO/raw/commit/$NEW_REV/cpmfile.json" -o "$CPMFILE"; then
-  warn "Failed to fetch cpmfile.json at $NEW_REV"
+  "https://$HOST/$OWNER/$REPO/raw/commit/$NEW_REV/externals/cpmfile.json" -o "$CPMFILE"; then
+  warn "Failed to fetch externals/cpmfile.json at $NEW_REV"
   output "updated" "false"
   exit 2
 fi
