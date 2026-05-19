@@ -4,7 +4,8 @@
     "type": "gitea-commit",
     "host": "git.eden-emu.dev",
     "owner": "eden-emu",
-    "repo": "eden"
+    "repo": "eden",
+    "branch": "master"
   },
   "packageFile": "package.nix",
   "hashes": [
