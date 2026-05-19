@@ -135,4 +135,12 @@
     url = "https://github.com/arun11299/cpp-jwt/archive/7f24eb4c32.tar.gz";
     hash = "sha256-qYgUTWKJAXDhDgkt3Y00QPyIkCalyZFH+dbF17CZGnE=";
   };
+
+  # sdl3 - windowing/input/audio (eden migrated SDL2 -> SDL3, 2026-05).
+  # Built from source; eden has no system-SDL3 path. Tag tracks the
+  # cpmfile.json `git_version` (3.4.8), maintained by scripts/sync-deps.py.
+  sdl3 = pkgs.fetchzip {
+    url = "https://github.com/libsdl-org/SDL/archive/refs/tags/release-3.4.8.tar.gz";
+    hash = "sha256-uBGyGxrUVx642Ku8qhR2sTy2JagcSioIhh/5RsXVAIM=";
+  };
 }
