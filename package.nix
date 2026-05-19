@@ -242,8 +242,8 @@ stdenv.mkDerivation {
   ];
 
   postInstall = ''
-    # Install udev rules for controller support (upstream still uses yuzu naming)
-    install -Dm644 $src/dist/72-yuzu-input.rules $out/lib/udev/rules.d/72-eden-input.rules
+    # Install udev rules for controller support
+    install -Dm644 $src/dist/72-eden-input.rules $out/lib/udev/rules.d/72-eden-input.rules
 
     # Install desktop file, icon, and appstream metadata (CMake doesn't install these)
     install -Dm644 $src/dist/dev.eden_emu.eden.desktop $out/share/applications/dev.eden_emu.eden.desktop
