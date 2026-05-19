@@ -7,7 +7,7 @@ and checks for CMakeLists.txt system dependency changes.
 
 Exit codes:
   0 = success (updates applied or nothing to do)
-  1 = error (hash prefetch failed, file parse error)
+  1 = error (hash prefetch failed, URL unresolved, file parse error)
   2 = new deps detected that need manual addition
 """
 
@@ -161,13 +161,19 @@ def resolve_url(cpm_key: str, entry: dict) -> tuple[str, str] | None:
         return (url, "fetchurl")
 
     elif "tag" in entry and "git_version" in entry:
-        # Tag-based release (fetchzip)
+        # Tag-based release archive (fetchzip). The GitHub archive layout
+        # only — a non-GitHub git_host uses a different path, so return None
+        # (an unresolved URL) rather than silently building a wrong one.
+        if host and "github" not in host:
+            return None
         ver = entry["git_version"]
         tag = entry["tag"].replace("%VERSION%", ver)
         return (f"https://github.com/{repo}/archive/refs/tags/{tag}.tar.gz", "fetchzip")
 
     elif "sha" in entry:
-        # Commit-based (fetchzip)
+        # Commit archive (fetchzip). GitHub archive layout only — see above.
+        if host and "github" not in host:
+            return None
         return (f"https://github.com/{repo}/archive/{entry['sha']}.tar.gz", "fetchzip")
 
     return None
@@ -448,7 +454,9 @@ def main() -> int:
         # Resolve new URL
         resolved = resolve_url(cpm_key, entry)
         if resolved is None:
-            warnings.append(f"Could not resolve URL for '{cpm_key}'")
+            # A tracked dep that fails to resolve would silently stay stale —
+            # that is a hard error, not a warning.
+            errors.append(f"Could not resolve URL for tracked dep '{cpm_key}'")
             continue
 
         new_url, expected_fetch_type = resolved
