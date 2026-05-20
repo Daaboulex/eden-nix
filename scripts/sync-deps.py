@@ -71,6 +71,12 @@ PLATFORMS = {
 # Deps that use extractDep (fetchurl archives) instead of copyDep (fetchzip dirs)
 EXTRACT_DEPS = {"sirit", "mbedtls", "nx-tzdb"}
 
+# Deps in deps/default.nix that are intentionally absent from cpmfile.json:
+# upstream's CMakeLists invokes CPMAddPackage(...) for these directly rather
+# than declaring them in the manifest, so the "POSSIBLY REMOVED" check would
+# warn on them every run unless we list them here. Review when bumping.
+CPM_INLINE_DEPS = {"spirv-tools", "mcl"}
+
 # Extra deps NOT in cpmfile.json (managed via GitHub releases API)
 EXTRA_DEPS = {
     "mbedtls": {
@@ -505,7 +511,11 @@ def main() -> int:
     extra_dep_attrs = set(EXTRA_DEPS.keys())
 
     for attr in current_deps:
-        if attr not in cpmfile_attrs and attr not in extra_dep_attrs:
+        if (
+            attr not in cpmfile_attrs
+            and attr not in extra_dep_attrs
+            and attr not in CPM_INLINE_DEPS
+        ):
             warnings.append(
                 f"POSSIBLY REMOVED: '{attr}' is in deps/default.nix but not in "
                 f"cpmfile.json — verify it's still needed"
