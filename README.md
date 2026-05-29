@@ -3,7 +3,7 @@
 <!-- BEGIN generated:badges -->
 [![CI](https://github.com/Daaboulex/eden-nix/actions/workflows/ci.yml/badge.svg)](https://github.com/Daaboulex/eden-nix/actions/workflows/ci.yml)
 [![NixOS unstable](https://img.shields.io/badge/NixOS-unstable-78C0E8?logo=nixos&logoColor=white)](https://nixos.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](./LICENSE)
 <!-- END generated:badges -->
 
 Nix flake for the [Eden](https://eden-emu.dev) Nintendo Switch emulator.
@@ -14,8 +14,9 @@ Nix flake for the [Eden](https://eden-emu.dev) Nintendo Switch emulator.
 | | |
 |---|---|
 | **Project** | [eden-emu/eden](https://git.eden-emu.dev/eden-emu/eden) |
-| **License** | GPL-3.0 |
+| **License** | GPL-3.0-or-later |
 | **Tracked** | Gitea commits |
+
 <!-- END generated:upstream -->
 
 ## What Is This?
@@ -55,6 +56,7 @@ Import the NixOS module:
 ```nix
 imports = [ inputs.eden.nixosModules.default ];
 ```
+
 <!-- END generated:installation -->
 
 ## Build from source
@@ -114,6 +116,7 @@ eden --help              # show CLI options
 1. Place your Switch firmware in `~/.local/share/eden/nand/system/Contents/registered/`
 2. Place your `prod.keys` in `~/.local/share/eden/keys/`
 3. Add game files (NSP/XCI) via **File → Open** or the game directory setting
+
 ## Development
 
 ```bash
@@ -143,7 +146,7 @@ This flake automatically tracks the latest Eden master branch via GitHub Actions
 <!-- BEGIN generated:options -->
 ## Options
 
-This module declares `programs.eden.enable`. See `flake.nix` for the module definition.
+This module declares `programs.eden.{enable,package}`. See [`module.nix`](module.nix) for the module definition.
 <!-- END generated:options -->
 
 ## License

@@ -3,86 +3,72 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    flake-parts.url = "github:hercules-ci/flake-parts";
     git-hooks = {
       url = "github:cachix/git-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    std = {
+      url = "github:Daaboulex/nix-packaging-standard?ref=v2.2.3";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.git-hooks.follows = "git-hooks";
+    };
   };
 
   outputs =
-    {
-      self,
-      nixpkgs,
-      git-hooks,
-    }:
-    let
-      supportedSystems = [
+    inputs@{ flake-parts, self, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      systems = [
         "x86_64-linux"
         "aarch64-linux"
       ];
-      forAllSystems =
-        fn:
-        nixpkgs.lib.genAttrs supportedSystems (
-          system:
-          fn {
-            pkgs = import nixpkgs { localSystem.system = system; };
-            inherit system;
-          }
-        );
-    in
-    {
-      packages = forAllSystems (
-        { pkgs, system }:
-        let
-          deps = import ./deps { inherit pkgs; };
-        in
-        {
-          eden = pkgs.callPackage ./package.nix { inherit deps; };
-          default = self.packages.${system}.eden;
-        }
-      );
 
-      formatter = forAllSystems ({ pkgs, ... }: pkgs.nixfmt);
+      imports = [ inputs.std.flakeModules.base ];
 
-      checks = forAllSystems (
-        { system, ... }:
+      flake.overlays.default = _final: prev: {
+        eden = self.packages.${prev.stdenv.hostPlatform.system}.eden;
+      };
+      flake.nixosModules.default = import ./module.nix;
+
+      perSystem =
         {
-          pre-commit-check = git-hooks.lib.${system}.run {
-            src = self;
-            hooks.nixfmt-rfc-style.enable = true;
-            hooks.typos.enable = true;
-            hooks.rumdl.enable = true;
-            hooks.check-readme-sections = {
-              enable = true;
-              name = "check-readme-sections";
-              entry = "bash scripts/check-readme-sections.sh";
-              files = "README\.md$";
-              language = "system";
-            };
+          config,
+          lib,
+          system,
+          pkgs,
+          self',
+          ...
+        }:
+        {
+          packages.eden = pkgs.callPackage ./package.nix {
+            deps = import ./deps { inherit pkgs; };
           };
-        }
-      );
+          packages.default = self'.packages.eden;
 
-      devShells = forAllSystems (
-        { pkgs, system }:
-        {
-          # Development shell for working on Eden
-          default = pkgs.mkShell {
-            inherit (self.checks.${system}.pre-commit-check) shellHook;
-            inputsFrom = [ self.packages.${system}.eden ];
-            buildInputs = self.checks.${system}.pre-commit-check.enabledPackages;
-            packages = with pkgs; [
-              cmake
-              ninja
-              ccache
-              nil
-            ];
-          };
+          # `nix develop` — build + lint shell. Overrides the standard's
+          # lint-only default to add Eden's C++ build toolchain, while still
+          # carrying the pre-commit hooks via the pre-commit devShell.
+          devShells.default = lib.mkForce (
+            pkgs.mkShell {
+              inputsFrom = [
+                config.pre-commit.devShell
+                self'.packages.eden
+              ];
+              packages = with pkgs; [
+                cmake
+                ninja
+                ccache
+                nil
+              ];
+            }
+          );
 
-          # Android APK build shell
-          android =
+          # `nix develop .#android` — Android APK build environment. Uses a
+          # separate nixpkgs import that accepts the (unfree) Android SDK
+          # licenses, so the main package/dev shells stay free.
+          devShells.android =
             let
-              androidPkgs = import nixpkgs {
+              androidPkgs = import inputs.nixpkgs {
                 localSystem.system = system;
                 config = {
                   android_sdk.accept_license = true;
@@ -138,40 +124,14 @@
                 echo "   cd src/android && ./gradlew assembleRelease"
               '';
             };
-        }
-      );
 
-      # NixOS module for easy integration
-      nixosModules.default =
-        {
-          config,
-          lib,
-          pkgs,
-          ...
-        }:
-        let
-          cfg = config.programs.eden;
-        in
-        {
-          options.programs.eden = {
-            enable = lib.mkEnableOption "Eden Nintendo Switch Emulator";
-            package = lib.mkOption {
-              type = lib.types.package;
-              default = self.packages.${pkgs.stdenv.hostPlatform.system}.eden;
-              description = "The Eden package to use";
-            };
-          };
-
-          config = lib.mkIf cfg.enable {
-            environment.systemPackages = [ cfg.package ];
-            # Add udev rules for controller support
-            services.udev.packages = [ cfg.package ];
+          checks.module-eval-nixos = inputs.std.lib.nixosModuleCheck {
+            inherit (inputs) nixpkgs;
+            inherit system;
+            overlays = [ self.overlays.default ];
+            module = ./module.nix;
+            config.programs.eden.enable = true;
           };
         };
-
-      # Overlay for including in other flakes
-      overlays.default = final: prev: {
-        eden = self.packages.${prev.stdenv.hostPlatform.system}.eden;
-      };
     };
 }
