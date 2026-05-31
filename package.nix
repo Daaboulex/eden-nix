@@ -57,8 +57,8 @@
 let
   # Auto-updated by GitHub Actions - do not edit manually
   # Last updated: 2026-05-18
-  rev = "ff7bbaea7db5a9a9528c1ef087d3a49a18931b52";
-  version = "0.2.0-rc2-unstable-2026-05-30";
+  rev = "bd2d34404063f51c7eb7970fd4d5591a7788774c";
+  version = "0.2.0-rc2-unstable-2026-05-31";
 in
 stdenv.mkDerivation {
   pname = "eden";
@@ -69,7 +69,7 @@ stdenv.mkDerivation {
     owner = "eden-emu";
     repo = "eden";
     inherit rev;
-    hash = "sha256-Fn/HqgyowIP0VDaF1vx/VJluj1mFFJSj5lGEHqZt+Y4=";
+    hash = "sha256-fE4yahqYOFGjnxnmGId1NXKxelP5j+ENXPW1o4CYBPs=";
     fetchSubmodules = true;
   };
 
