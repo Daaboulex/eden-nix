@@ -11,6 +11,11 @@
   makeWrapper,
   # Qt6
   qt6Packages,
+  # GTK GSettings schemas — eden is Qt, but its file dialog uses the GTK
+  # backend, which aborts without org.gtk.Settings.FileChooser (issue #12).
+  gtk3,
+  gsettings-desktop-schemas,
+  wrapGAppsHook3,
   # Vulkan
   vulkan-loader,
   glslang,
@@ -78,6 +83,7 @@ stdenv.mkDerivation {
     ninja
     pkg-config
     qt6Packages.wrapQtAppsHook
+    wrapGAppsHook3
     makeWrapper
     qt6Packages.qttools
     glslang
@@ -92,6 +98,10 @@ stdenv.mkDerivation {
     qt6Packages.qtmultimedia
     qt6Packages.qtwayland
     qt6Packages.qtwebengine
+
+    # GTK file-chooser GSettings schemas (gtk3 ships org.gtk.Settings.FileChooser)
+    gtk3
+    gsettings-desktop-schemas
 
     # Vulkan (loader only - headers are bundled via CPM for version matching)
     vulkan-loader
@@ -240,6 +250,15 @@ stdenv.mkDerivation {
   qtWrapperArgs = [
     "--prefix LD_LIBRARY_PATH : ${vulkan-loader}/lib"
   ];
+
+  # wrapGAppsHook3 collects the GTK GSettings schema env into gappsWrapperArgs
+  # but must not wrap the binary itself (wrapQtAppsHook does the single final
+  # wrap); fold its args into the Qt wrapper so the GTK file dialog finds
+  # org.gtk.Settings.FileChooser.
+  dontWrapGApps = true;
+  preFixup = ''
+    qtWrapperArgs+=("''${gappsWrapperArgs[@]}")
+  '';
 
   postInstall = ''
     # Install udev rules for controller support
