@@ -62,8 +62,8 @@
 let
   # Auto-updated by GitHub Actions - do not edit manually
   # Last updated: 2026-05-18
-  rev = "5ba3ae32dc040ac813c93512b0d90a22c4ec278a";
-  version = "0.2.0-rc2-unstable-2026-06-06";
+  rev = "eaad33adcdfdddbf6d6aec7afdd3df9e1ceed3d5";
+  version = "0.2.0-rc2-unstable-2026-06-09";
 in
 stdenv.mkDerivation {
   pname = "eden";
@@ -74,7 +74,7 @@ stdenv.mkDerivation {
     owner = "eden-emu";
     repo = "eden";
     inherit rev;
-    hash = "sha256-v0FictPg+eO+fhL3ji48z+6bCn0sEmnBE3Y3I6X6gSI=";
+    hash = "sha256-HGDJsWXRvPfEJYHEbyluhreg3LR9PABHNC3I6CHG2Cc=";
     fetchSubmodules = true;
   };
 
@@ -190,7 +190,7 @@ stdenv.mkDerivation {
     copyDep ${deps.quazip} quazip-qt6/2e95
     copyDep ${deps.mcl} mcl/7b08
     copyDep ${deps.libusb} libusb/1.0.29
-    copyDep ${deps.httplib} httplib/0.37.0
+    copyDep ${deps.httplib} httplib/0.46.0
     copyDep ${deps.cpp-jwt} cpp-jwt/7f24
     copyDep ${deps.sdl3} sdl3/3.4.8
 
