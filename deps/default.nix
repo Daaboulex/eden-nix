@@ -54,8 +54,8 @@
 
   # sirit - SPIR-V IR builder (Eden fork)
   sirit = pkgs.fetchurl {
-    url = "https://github.com/eden-emulator/sirit/releases/download/v1.0.4/sirit-source-1.0.4.tar.zst";
-    hash = "sha256-baovCDOqQxd+1U1INsDEJjxhPtZnx5JWSPY7DguYqvY=";
+    url = "https://github.com/eden-emulator/sirit/releases/download/v1.0.5/sirit-source-1.0.5.tar.zst";
+    hash = "sha256-9kKrNPvav1gwj5EabM6pZmf1WmPj57NXLi+H0vTGrdo=";
   };
 
   # VulkanMemoryAllocator
