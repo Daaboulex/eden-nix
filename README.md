@@ -3,7 +3,7 @@
 <!-- BEGIN generated:badges -->
 [![CI](https://github.com/Daaboulex/eden-nix/actions/workflows/ci.yml/badge.svg)](https://github.com/Daaboulex/eden-nix/actions/workflows/ci.yml)
 [![NixOS unstable](https://img.shields.io/badge/NixOS-unstable-78C0E8?logo=nixos&logoColor=white)](https://nixos.org)
-[![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](./LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 <!-- END generated:badges -->
 
 Nix flake for the [Eden](https://eden-emu.dev) Nintendo Switch emulator.
@@ -151,7 +151,7 @@ This module declares `programs.eden.{enable,package}`. See [`module.nix`](module
 
 ## License
 
-This packaging flake is [GPL-3.0-or-later](./LICENSE) licensed (matches upstream). Upstream Eden is [GPL-3.0-or-later](https://git.eden-emu.dev/eden-emu/eden/src/branch/master/LICENSE.txt).
+The Nix packaging code is [MIT](./LICENSE) licensed. Upstream Eden is [GPL-3.0-or-later](https://git.eden-emu.dev/eden-emu/eden/src/branch/master/LICENSE.txt).
 
 <!-- BEGIN generated:footer -->
 ---
