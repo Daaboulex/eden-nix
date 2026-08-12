@@ -154,7 +154,4 @@ This module declares `programs.eden.{enable,package}`. See [`module.nix`](module
 The Nix packaging code is [MIT](./LICENSE) licensed. Upstream Eden is [GPL-3.0-or-later](https://git.eden-emu.dev/eden-emu/eden/src/branch/master/LICENSE.txt).
 
 <!-- BEGIN generated:footer -->
----
-
-*Maintained as part of the [Daaboulex](https://github.com/Daaboulex) NixOS ecosystem.*
 <!-- END generated:footer -->
