@@ -60,6 +60,7 @@
                 ccache
                 nil
               ];
+              shellHook = inputs.std.lib.devStateHook;
             }
           );
 
