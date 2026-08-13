@@ -12,7 +12,6 @@ Exit codes:
 """
 
 import json
-import os
 import re
 import subprocess
 import sys
@@ -26,18 +25,18 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # cpmfile.json keys to skip entirely (not needed for our Linux desktop build)
 SKIP_KEYS = {
-    "libadrenotools",    # Android GPU driver loading
-    "oboe",              # Android audio backend
-    "catch2",            # Test framework (YUZU_TESTS=OFF)
-    "biscuit",           # RISC-V JIT assembler
-    "sdl2",              # CI-only prebuilt entry
-    "sdl2_generic",      # We use system SDL2
-    "sdl2_steamdeck",    # Steam Deck specific SDL2
-    "ffmpeg",            # We use system ffmpeg
-    "ffmpeg-ci",         # CI-only prebuilt entry
-    "moltenvk",          # macOS Vulkan translation
-    "sirit-ci",          # CI-only prebuilt entry
-    "sdl3-ci",           # CI-only prebuilt SDL3 (we bundle sdl3 source)
+    "libadrenotools",  # Android GPU driver loading
+    "oboe",  # Android audio backend
+    "catch2",  # Test framework (YUZU_TESTS=OFF)
+    "biscuit",  # RISC-V JIT assembler
+    "sdl2",  # CI-only prebuilt entry
+    "sdl2_generic",  # We use system SDL2
+    "sdl2_steamdeck",  # Steam Deck specific SDL2
+    "ffmpeg",  # We use system ffmpeg
+    "ffmpeg-ci",  # CI-only prebuilt entry
+    "moltenvk",  # macOS Vulkan translation
+    "sirit-ci",  # CI-only prebuilt entry
+    "sdl3-ci",  # CI-only prebuilt SDL3 (we bundle sdl3 source)
 }
 
 # Nix attribute name overrides (cpmfile key -> attr in deps/default.nix)
@@ -121,6 +120,7 @@ CMAKE_TO_NIX = {
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def get_nix_attr(cpm_key: str) -> str:
     """Get the Nix attribute name for a cpmfile.json key."""
     return NIX_ATTR_MAP.get(cpm_key, cpm_key)
@@ -152,7 +152,7 @@ def resolve_url(cpm_key: str, entry: dict) -> tuple[str, str] | None:
     Returns (url, fetch_type) or None if unresolvable.
     """
     repo = entry.get("repo", "")
-    host = entry.get("git_host", None)
+    host = entry.get("git_host")
 
     if "artifact" in entry:
         # Release artifact download (fetchurl)
@@ -195,14 +195,26 @@ def nix_prefetch(url: str, unpack: bool = True) -> str | None:
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
         if result.returncode != 0:
-            print(f"  nix-prefetch-url failed: {result.stderr.strip()}", file=sys.stderr)
+            print(
+                f"  nix-prefetch-url failed: {result.stderr.strip()}", file=sys.stderr
+            )
             return None
         base32_hash = result.stdout.strip()
 
         # Convert base32 -> SRI
         result2 = subprocess.run(
-            ["nix", "hash", "convert", "--hash-algo", "sha256", "--to", "sri", base32_hash],
-            capture_output=True, text=True,
+            [
+                "nix",
+                "hash",
+                "convert",
+                "--hash-algo",
+                "sha256",
+                "--to",
+                "sri",
+                base32_hash,
+            ],
+            capture_output=True,
+            text=True,
         )
         if result2.returncode != 0:
             return None
@@ -216,6 +228,7 @@ def nix_prefetch(url: str, unpack: bool = True) -> str | None:
 # File parsing
 # ---------------------------------------------------------------------------
 
+
 def parse_deps_nix(path: Path) -> dict[str, dict]:
     """Parse deps/default.nix to extract current dep URLs and hashes.
 
@@ -227,7 +240,7 @@ def parse_deps_nix(path: Path) -> dict[str, dict]:
     # Match: attr = pkgs.fetchzip { url = "..."; hash = "..."; };
     # or:    attr = pkgs.fetchurl { url = "..."; hash = "..."; };
     pattern = re.compile(
-        r'([\w-]+)\s*=\s*pkgs\.(fetchzip|fetchurl)\s*\{([^}]+)\}',
+        r"([\w-]+)\s*=\s*pkgs\.(fetchzip|fetchurl)\s*\{([^}]+)\}",
         re.DOTALL,
     )
 
@@ -258,7 +271,9 @@ def parse_cpm_paths(path: Path) -> dict[str, tuple[str, str]]:
     paths = {}
 
     # Match: copyDep ${deps.attr} dir/version  or  extractDep ${deps.attr} dir/version
-    pattern = re.compile(r'(?:copyDep|extractDep)\s+\$\{deps\.([\w-]+)\}\s+([\w._-]+)/([\w._-]+)')
+    pattern = re.compile(
+        r"(?:copyDep|extractDep)\s+\$\{deps\.([\w-]+)\}\s+([\w._-]+)/([\w._-]+)"
+    )
     for m in pattern.finditer(content):
         attr = m.group(1)
         cpm_dir = m.group(2)
@@ -272,6 +287,7 @@ def parse_cpm_paths(path: Path) -> dict[str, tuple[str, str]]:
 # File updating
 # ---------------------------------------------------------------------------
 
+
 def update_dep_in_deps_nix(path: Path, attr: str, new_url: str, new_hash: str) -> bool:
     """Update URL and hash for a dep in deps/default.nix atomically."""
     content = path.read_text()
@@ -279,48 +295,58 @@ def update_dep_in_deps_nix(path: Path, attr: str, new_url: str, new_hash: str) -
     # Find the block for this attribute and update both url and hash together
     # This ensures they can never desync
     block_pattern = re.compile(
-        rf'({re.escape(attr)}\s*=\s*pkgs\.(?:fetchzip|fetchurl)\s*\{{[^}}]*?)'
+        rf"({re.escape(attr)}\s*=\s*pkgs\.(?:fetchzip|fetchurl)\s*\{{[^}}]*?)"
         rf'url\s*=\s*"[^"]*"'
-        rf'([^}}]*?)'
+        rf"([^}}]*?)"
         rf'hash\s*=\s*"[^"]*"',
         re.DOTALL,
     )
 
     match = block_pattern.search(content)
     if not match:
-        print(f"  WARNING: Could not find {attr} block in deps/default.nix", file=sys.stderr)
+        print(
+            f"  WARNING: Could not find {attr} block in deps/default.nix",
+            file=sys.stderr,
+        )
         return False
 
     new_content = (
-        content[:match.start()]
+        content[: match.start()]
         + f'{match.group(1)}url = "{new_url}"{match.group(2)}hash = "{new_hash}"'
-        + content[match.end():]
+        + content[match.end() :]
     )
 
     path.write_text(new_content)
     return True
 
 
-def update_cpm_path(path: Path, nix_attr: str, cpm_dir: str, old_ver: str, new_ver: str) -> bool:
+def update_cpm_path(
+    path: Path, nix_attr: str, cpm_dir: str, old_ver: str, new_ver: str
+) -> bool:
     """Update CPM cache path version in package.nix."""
     content = path.read_text()
 
     # Match the specific copyDep/extractDep line for this attr
     pattern = re.compile(
-        rf'((?:copyDep|extractDep)\s+\${{deps\.{re.escape(nix_attr)}}}\s+){re.escape(cpm_dir)}/{re.escape(old_ver)}'
+        rf"((?:copyDep|extractDep)\s+\${{deps\.{re.escape(nix_attr)}}}\s+){re.escape(cpm_dir)}/{re.escape(old_ver)}"
     )
 
-    new_content = pattern.sub(rf'\g<1>{cpm_dir}/{new_ver}', content)
+    new_content = pattern.sub(rf"\g<1>{cpm_dir}/{new_ver}", content)
 
     if new_content == content:
-        print(f"  WARNING: Could not update CPM path for {nix_attr} ({cpm_dir}/{old_ver} -> {new_ver})", file=sys.stderr)
+        print(
+            f"  WARNING: Could not update CPM path for {nix_attr} ({cpm_dir}/{old_ver} -> {new_ver})",
+            file=sys.stderr,
+        )
         return False
 
     path.write_text(new_content)
     return True
 
 
-def generate_dep_nix(attr: str, url: str, sri_hash: str, fetch_type: str, comment: str) -> str:
+def generate_dep_nix(
+    attr: str, url: str, sri_hash: str, fetch_type: str, comment: str
+) -> str:
     """Generate a Nix dep entry for a new dependency."""
     return f"""
   # {comment}
@@ -331,19 +357,22 @@ def generate_dep_nix(attr: str, url: str, sri_hash: str, fetch_type: str, commen
 """
 
 
-def generate_cpm_line(nix_attr: str, cpm_dir: str, version: str, is_extract: bool) -> str:
+def generate_cpm_line(
+    nix_attr: str, cpm_dir: str, version: str, is_extract: bool
+) -> str:
     """Generate a copyDep/extractDep line for package.nix."""
     fn = "extractDep" if is_extract else "copyDep"
-    return f'    {fn} ${{deps.{nix_attr}}} {cpm_dir}/{version}'
+    return f"    {fn} ${{deps.{nix_attr}}} {cpm_dir}/{version}"
 
 
 # ---------------------------------------------------------------------------
 # CMake system dep detection
 # ---------------------------------------------------------------------------
 
+
 def extract_find_packages(cmake_content: str) -> set[str]:
     """Extract find_package() names from CMakeLists.txt content."""
-    pattern = re.compile(r'find_package\s*\(\s*(\w+)', re.IGNORECASE)
+    pattern = re.compile(r"find_package\s*\(\s*(\w+)", re.IGNORECASE)
     return {m.group(1) for m in pattern.finditer(cmake_content)}
 
 
@@ -361,11 +390,15 @@ def check_cmake_changes(old_commit: str, new_commit: str) -> list[str]:
         try:
             old_resp = subprocess.run(
                 ["curl", "-sf", f"{base_url}/{old_commit}/{path}"],
-                capture_output=True, text=True, timeout=30,
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
             new_resp = subprocess.run(
                 ["curl", "-sf", f"{base_url}/{new_commit}/{path}"],
-                capture_output=True, text=True, timeout=30,
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
 
             if old_resp.returncode != 0 or new_resp.returncode != 0:
@@ -398,9 +431,13 @@ def check_cmake_changes(old_commit: str, new_commit: str) -> list[str]:
 # Main sync logic
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
     if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} <cpmfile.json> [old_commit new_commit]", file=sys.stderr)
+        print(
+            f"Usage: {sys.argv[0]} <cpmfile.json> [old_commit new_commit]",
+            file=sys.stderr,
+        )
         return 1
 
     cpmfile_path = Path(sys.argv[1])
@@ -427,7 +464,7 @@ def main() -> int:
             continue
         if entry.get("ci"):
             continue
-        if entry.get("skip_updates") == True or entry.get("skip_updates") == "true":
+        if entry.get("skip_updates") or entry.get("skip_updates") == "true":
             continue
 
         nix_attr = get_nix_attr(cpm_key)
@@ -442,15 +479,17 @@ def main() -> int:
                 cpm_ver = get_cpm_version(cpm_key, entry)
                 is_extract = fetch_type == "fetchurl"
 
-                new_dep_suggestions.append({
-                    "key": cpm_key,
-                    "attr": nix_attr,
-                    "url": url,
-                    "fetch_type": fetch_type,
-                    "cpm_dir": cpm_dir,
-                    "cpm_version": cpm_ver,
-                    "is_extract": is_extract,
-                })
+                new_dep_suggestions.append(
+                    {
+                        "key": cpm_key,
+                        "attr": nix_attr,
+                        "url": url,
+                        "fetch_type": fetch_type,
+                        "cpm_dir": cpm_dir,
+                        "cpm_version": cpm_ver,
+                        "is_extract": is_extract,
+                    }
+                )
                 warnings.append(
                     f"NEW CPM DEP: '{cpm_key}' (attr: {nix_attr}) not in deps/default.nix — "
                     f"URL: {url}"
@@ -495,9 +534,15 @@ def main() -> int:
             continue
 
         # Update CPM cache path in package.nix
-        if old_ver and new_ver and old_ver != new_ver:
-            if not update_cpm_path(package_nix_path, nix_attr, cpm_dir, old_ver, new_ver):
-                warnings.append(f"Could not update CPM path for {nix_attr} in package.nix")
+        if (
+            old_ver
+            and new_ver
+            and old_ver != new_ver
+            and not update_cpm_path(
+                package_nix_path, nix_attr, cpm_dir, old_ver, new_ver
+            )
+        ):
+            warnings.append(f"Could not update CPM path for {nix_attr} in package.nix")
 
         updated.append(f"{nix_attr}: {old_ver or '?'} -> {new_ver or '?'}")
 
@@ -536,10 +581,14 @@ def main() -> int:
     if new_dep_suggestions:
         print(f"\n{len(new_dep_suggestions)} new dependencies need manual addition:")
         for s in new_dep_suggestions:
-            print(f"\n  # Add to deps/default.nix:")
-            print(f"  {generate_dep_nix(s['attr'], s['url'], '<HASH>', s['fetch_type'], s['key']).strip()}")
-            print(f"\n  # Add to package.nix preConfigure:")
-            print(f"  {generate_cpm_line(s['attr'], s['cpm_dir'], s['cpm_version'] or '?', s['is_extract']).strip()}")
+            print("\n  # Add to deps/default.nix:")
+            print(
+                f"  {generate_dep_nix(s['attr'], s['url'], '<HASH>', s['fetch_type'], s['key']).strip()}"
+            )
+            print("\n  # Add to package.nix preConfigure:")
+            print(
+                f"  {generate_cpm_line(s['attr'], s['cpm_dir'], s['cpm_version'] or '?', s['is_extract']).strip()}"
+            )
 
     if warnings:
         print(f"\nWarnings ({len(warnings)}):")
