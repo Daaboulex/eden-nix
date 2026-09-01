@@ -25,8 +25,10 @@
 
       imports = [ inputs.std.flakeModules.base ];
 
-      flake.overlays.default = _final: prev: {
-        eden = self.packages.${prev.stdenv.hostPlatform.system}.eden;
+      flake.overlays.default = final: _prev: {
+        eden = final.callPackage ./package.nix {
+          deps = import ./deps { pkgs = final; };
+        };
       };
       flake.nixosModules.default = import ./module.nix;
 
