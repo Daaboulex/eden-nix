@@ -1,5 +1,3 @@
-# Eden Emulator Package for NixOS
-# Based on Eden from https://git.eden-emu.dev/eden-emu/eden
 {
   lib,
   stdenv,
@@ -9,17 +7,12 @@
   ninja,
   pkg-config,
   makeWrapper,
-  # Qt6
   qt6Packages,
-  # GTK GSettings schemas — eden is Qt, but its file dialog uses the GTK
-  # backend, which aborts without org.gtk.Settings.FileChooser (issue #12).
   gtk3,
   gsettings-desktop-schemas,
   wrapGAppsHook3,
-  # Vulkan
   vulkan-loader,
   glslang,
-  # System deps
   boost,
   ffmpeg,
   fmt,
@@ -34,11 +27,9 @@
   libzip,
   nv-codec-headers-12,
   protobuf,
-  # Audio backends (cubeb needs these to build functional audio output)
   alsa-lib,
   libpulseaudio,
   pipewire,
-  # SDL3 build deps — eden bundles + builds SDL3 from source (no system path)
   dbus,
   libGL,
   libdrm,
@@ -60,10 +51,36 @@
 }:
 
 let
-  # Auto-updated by GitHub Actions - do not edit manually
-  # Last updated: 2026-05-18
-  rev = "6bdb03d8ac5a626256e52e4601fae9d245405345";
-  version = "0.2.0-rc2-unstable-2026-06-25";
+  rev = "1dcc5745918761f5a554fec981b4d144034f6201";
+  version = "0.2.0-rc2-unstable-2026-09-02";
+
+  bundled = [
+    "enet"
+    "simpleini"
+    "cubeb"
+    "discord-rpc"
+    "spirv-headers"
+    "vulkan-memory-allocator"
+    "gamemode"
+    "frozen"
+    "quazip"
+    "libusb"
+    "httplib"
+    "cpp-jwt"
+    "sdl3"
+    "sirit"
+    "tzdb"
+    "vulkan-headers"
+    "vulkan-utility-libraries"
+  ]
+  ++ lib.optional stdenv.hostPlatform.isx86_64 "xbyak"
+  ++ lib.optional stdenv.hostPlatform.isAarch64 "oaknut";
+
+  stage =
+    key:
+    "stageDep ${deps.${key}.archive} ${deps.${key}.cacheDir} ${
+      lib.escapeShellArgs deps.${key}.patches
+    }";
 in
 stdenv.mkDerivation {
   pname = "eden";
@@ -74,7 +91,7 @@ stdenv.mkDerivation {
     owner = "eden-emu";
     repo = "eden";
     inherit rev;
-    hash = "sha256-Rw1UXcMRIWE9LQaYc0rMnFaw9pTimtcmZKyGqVTCibU=";
+    hash = "sha256-P+spSusyd7nBrfXkW8qysmkOb1JF3uFWAx7pvw4I9Q8=";
     fetchSubmodules = true;
   };
 
@@ -92,21 +109,18 @@ stdenv.mkDerivation {
   ];
 
   buildInputs = [
-    # Qt6
     qt6Packages.qtbase
     qt6Packages.qtcharts
     qt6Packages.qtmultimedia
     qt6Packages.qtwayland
     qt6Packages.qtwebengine
 
-    # GTK file-chooser GSettings schemas (gtk3 ships org.gtk.Settings.FileChooser)
+    # eden's Qt file dialog uses the GTK backend, which aborts without org.gtk.Settings.FileChooser
     gtk3
     gsettings-desktop-schemas
 
-    # Vulkan (loader only - headers are bundled via CPM for version matching)
     vulkan-loader
 
-    # System libs
     boost
     ffmpeg
     fmt
@@ -122,12 +136,10 @@ stdenv.mkDerivation {
     zlib
     zstd
 
-    # Audio backends for cubeb
     alsa-lib
     libpulseaudio
     pipewire
 
-    # SDL3 build deps — eden builds the bundled SDL3 source
     dbus
     libGL
     libdrm
@@ -147,103 +159,51 @@ stdenv.mkDerivation {
     libxtst
   ];
 
-  # Pre-populate CPM cache with our pre-fetched deps
-  # CPM expects: /build/source/.cache/cpm/<name>/<version>/
-  # Some deps are archives (fetchurl) that need extraction
   preConfigure = ''
-    # CPM looks in .cache/cpm inside source dir
     export CPM_SOURCE_CACHE=$PWD/.cache/cpm
-    mkdir -p $CPM_SOURCE_CACHE
 
-    # Helper function to copy and make writable
-    copyDep() {
-      mkdir -p "$CPM_SOURCE_CACHE/$2"
-      cp -r "$1"/* "$CPM_SOURCE_CACHE/$2/" || cp -r "$1" "$CPM_SOURCE_CACHE/$2/"
-      chmod -R u+w "$CPM_SOURCE_CACHE/$2"
+    stageDep() {
+      local archive=$1 dir=$CPM_SOURCE_CACHE/$2
+      shift 2
+      local unpacked
+      unpacked=$(mktemp -d)
+      tar -xf "$archive" -C "$unpacked"
+      mapfile -t entries < <(find "$unpacked" -mindepth 1 -maxdepth 1)
+      mkdir -p "$(dirname "$dir")"
+      if [ "''${#entries[@]}" -eq 1 ] && [ -d "''${entries[0]}" ]; then
+        mv "''${entries[0]}" "$dir"
+      else
+        mv "$unpacked" "$dir"
+      fi
+      chmod -R u+w "$dir"
+      local key=none
+      if [ "$#" -gt 0 ]; then
+        for p in "$@"; do
+          patch -d "$dir" -p1 -i "$PWD/$p"
+        done
+        key=$(cat "$@" | sha512sum | cut -d ' ' -f 1)
+      fi
+      printf '%s' "$key" > "$dir/.cpm_patch_key"
     }
 
-    # Helper function to extract archive
-    extractDep() {
-      mkdir -p "$CPM_SOURCE_CACHE/$2"
-      tar -xf "$1" -C "$CPM_SOURCE_CACHE/$2" --strip-components=1 2>/dev/null || \
-        zstd -d "$1" -c | tar -x -C "$CPM_SOURCE_CACHE/$2" --strip-components=1 2>/dev/null || \
-        tar -xjf "$1" -C "$CPM_SOURCE_CACHE/$2" --strip-components=1 2>/dev/null || \
-        bzip2 -d -c "$1" | tar -x -C "$CPM_SOURCE_CACHE/$2" --strip-components=1
-      chmod -R u+w "$CPM_SOURCE_CACHE/$2"
-    }
-
-    # Copy deps to CPM cache with correct version paths
-    ${lib.optionalString stdenv.hostPlatform.isx86_64 ''
-      copyDep ${deps.xbyak} xbyak/7.35.2
-    ''}
-
-    copyDep ${deps.enet} enet/1.3.18
-    copyDep ${deps.simpleini} simpleini/4.25
-    copyDep ${deps.cubeb} cubeb/fa02
-    copyDep ${deps.discord-rpc} discordrpc/0d8b
-    copyDep ${deps.spirv-headers} spirv-headers/04f1
-    copyDep ${deps.spirv-tools} spirv-tools/0a7e
-    copyDep ${deps.vma} vulkanmemoryallocator/3.3.0
-    copyDep ${deps.unordered-dense} unordered_dense/7b55
-    copyDep ${deps.gamemode} gamemode/ce6f
-    copyDep ${deps.frozen} frozen/61dc
-    copyDep ${deps.quazip} quazip-qt6/2e95
-    copyDep ${deps.mcl} mcl/7b08
-    copyDep ${deps.libusb} libusb/1.0.29
-    copyDep ${deps.httplib} httplib/0.46.0
-    copyDep ${deps.cpp-jwt} cpp-jwt/7f24
-    copyDep ${deps.sdl3} sdl3/3.4.8
-
-    # Archives that need extraction (fetchurl - not directories)
-    extractDep ${deps.mbedtls} mbedtls/3.6.4
-    extractDep ${deps.sirit} sirit/1.0.5
-    extractDep ${deps.nx-tzdb} nx_tzdb/230326
-
-    # Vulkan deps - both must be bundled together to satisfy AddDependentPackages
-    copyDep ${deps.vulkan-headers} vulkanheaders/1.4.345
-    copyDep ${deps.vulkan-utility-libraries} vulkanutilitylibraries/1.4.345
-
-    ${lib.optionalString stdenv.hostPlatform.isAarch64 ''
-      copyDep ${deps.oaknut} oaknut/2.0.3
-    ''}
+    ${lib.concatMapStringsSep "\n" stage bundled}
   '';
 
   cmakeFlags = [
-    # Disable network fetching - use pre-populated cache
     "-DFETCHCONTENT_FULLY_DISCONNECTED=ON"
-
-    # Force bundled Vulkan headers to match bundled utility libraries
     "-DVulkanHeaders_FORCE_BUNDLED=ON"
-
-    # Build options
     "-DYUZU_TESTS=OFF"
-    "-DYUZU_BUILD_PRESET=generic" # Safe for binary distribution
-
-    # Disable tests for external deps (mbedtls needs Python3)
-    "-DENABLE_TESTING=OFF"
-    "-DENABLE_PROGRAMS=OFF"
-
-    # Qt6
+    "-DYUZU_BUILD_PRESET=generic"
     "-DENABLE_QT=ON"
     "-DENABLE_QT_TRANSLATION=OFF"
     "-DYUZU_USE_QT_MULTIMEDIA=ON"
     "-DYUZU_USE_QT_WEB_ENGINE=ON"
-
-    # SDL3 - built from the bundled CPM source (externals/cpmfile.json)
     "-DYUZU_USE_BUNDLED_SDL3=OFF"
-
-    # FFmpeg - use system
     "-DYUZU_USE_BUNDLED_FFMPEG=OFF"
     "-DYUZU_USE_EXTERNAL_FFMPEG=OFF"
-
-    # Audio
     "-DENABLE_CUBEB=ON"
-
-    # Optional features
     "-DUSE_DISCORD_PRESENCE=ON"
     "-DENABLE_UPDATE_CHECKER=OFF"
-
-    # Web services - needed for httplib dep
     "-DENABLE_WEB_SERVICE=ON"
   ];
 
@@ -251,20 +211,13 @@ stdenv.mkDerivation {
     "--prefix LD_LIBRARY_PATH : ${vulkan-loader}/lib"
   ];
 
-  # wrapGAppsHook3 collects the GTK GSettings schema env into gappsWrapperArgs
-  # but must not wrap the binary itself (wrapQtAppsHook does the single final
-  # wrap); fold its args into the Qt wrapper so the GTK file dialog finds
-  # org.gtk.Settings.FileChooser.
   dontWrapGApps = true;
   preFixup = ''
     qtWrapperArgs+=("''${gappsWrapperArgs[@]}")
   '';
 
   postInstall = ''
-    # Install udev rules for controller support
     install -Dm644 $src/dist/72-eden-input.rules $out/lib/udev/rules.d/72-eden-input.rules
-
-    # Install desktop file, icon, and appstream metadata (CMake doesn't install these)
     install -Dm644 $src/dist/dev.eden_emu.eden.desktop $out/share/applications/dev.eden_emu.eden.desktop
     install -Dm644 $src/dist/dev.eden_emu.eden.svg $out/share/icons/hicolor/scalable/apps/dev.eden_emu.eden.svg
     install -Dm644 $src/dist/dev.eden_emu.eden.metainfo.xml $out/share/metainfo/dev.eden_emu.eden.metainfo.xml

@@ -47,6 +47,9 @@
           };
           packages.default = self'.packages.eden;
 
+          # Upstream's own manifest, vendored verbatim: its git shas are not words.
+          pre-commit.settings.hooks.typos.excludes = [ "^deps/cpmfile\\.json$" ];
+
           # `nix develop` — build + lint shell. Overrides the standard's
           # lint-only default to add Eden's C++ build toolchain, while still
           # carrying the pre-commit hooks via the pre-commit devShell.

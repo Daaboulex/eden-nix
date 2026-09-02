@@ -24,7 +24,7 @@ Nix flake for the [Eden](https://eden-emu.dev) Nintendo Switch emulator.
 A Nix flake that builds Eden from upstream master with full CI infrastructure:
 
 - **Daily automated updates** via GitHub Actions — new master commits land here within 24 h
-- **CPM dependency sync** — `scripts/sync-deps.py` mirrors `cpmfile.json` and pre-fetches all sources for the sandboxed Nix build
+- **CPM dependencies from upstream's own manifest** — `deps/cpmfile.json` is Eden's `cpmfile.json` vendored at the pinned revision; every bundled dependency's URL and hash derive from it
 - **Pre-build verification** — fail-closed pipeline (eval → build → ELF check) before any push to `main`
 - **NixOS module** — exposes `programs.eden.enable` for declarative install
 - **Android devshell** — bundled SDK/NDK environment for building the Eden APK on NixOS
@@ -88,7 +88,7 @@ cd src/android && ./gradlew assembleRelease
 
 ## How it works
 
-Eden uses CPM (CMake Package Manager) to fetch dependencies at build time. Since Nix builds are sandboxed without network access, this flake pre-fetches all CPM dependencies and injects them into the build cache.
+Eden uses CPM (CMake Package Manager) to fetch dependencies at build time from the manifest `cpmfile.json`. Since Nix builds are sandboxed without network access, this flake vendors that manifest at the pinned revision (`deps/cpmfile.json`), fetches every bundled dependency from the URL and sha512 it declares (`deps/default.nix`), and stages them into the CPM cache with the patches and patch key Eden's own CPMUtil expects (`package.nix`).
 
 The Vulkan dependencies (`vulkan-headers` and `vulkan-utility-libraries`) are bundled together via CPM to avoid version mismatches with system packages.
 
@@ -136,12 +136,10 @@ CI runs the same chain daily; manual updates rarely needed.
 This flake automatically tracks the latest Eden master branch via GitHub Actions:
 
 - A workflow runs daily at 6 AM UTC (or manually via Actions → "Update Eden" → "Run workflow")
-- `scripts/sync-deps.py` synchronizes all CPM dependencies with upstream `cpmfile.json` — tag-based, commit-based, and release artifact deps are all handled
-- URL + hash updates are atomic (can never desync)
-- New upstream CPM dependencies are detected and flagged for manual addition
-- CMakeLists.txt `find_package()` changes are diffed to catch new system dependency requirements
+- `scripts/update.sh` bumps the pinned revision, re-vendors upstream's `cpmfile.json`, and recomputes the source hash
+- A dependency Eden newly bundles surfaces as a configure-time download attempt in the sandbox, so the build fails instead of fetching silently
 - If the build passes, changes are pushed directly to main
-- If the build fails, a GitHub issue is opened with dependency warnings, new dep suggestions, and build output
+- If the build fails, a GitHub issue is opened with the classified failure and build output
 
 <!-- BEGIN generated:options -->
 ## Options
