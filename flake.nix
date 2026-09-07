@@ -9,7 +9,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     std = {
-      url = "github:Daaboulex/nix-packaging-standard?ref=v2.33.1";
+      url = "github:Daaboulex/nix-packaging-standard?ref=v2.36.0";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.git-hooks.follows = "git-hooks";
     };
@@ -51,21 +51,17 @@
           pre-commit.settings.hooks.typos.excludes = [ "^deps/cpmfile\\.json$" ];
 
           # `nix develop` — build + lint shell. Overrides the standard's
-          # lint-only default to add Eden's C++ build toolchain, while still
-          # carrying the pre-commit hooks via the pre-commit devShell.
+          # lint-only default to add Eden's C++ build toolchain. mkDevShell
+          # carries the hooks, with the dev-state pins ahead of their install.
           devShells.default = lib.mkForce (
-            pkgs.mkShell {
-              inputsFrom = [
-                config.pre-commit.devShell
-                self'.packages.eden
-              ];
+            inputs.std.lib.mkDevShell { inherit pkgs config; } {
+              inputsFrom = [ self'.packages.eden ];
               packages = with pkgs; [
                 cmake
                 ninja
                 ccache
                 nil
               ];
-              shellHook = inputs.std.lib.devStateHook;
             }
           );
 
