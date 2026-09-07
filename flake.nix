@@ -107,10 +107,12 @@
 
               GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidSdk}/libexec/android-sdk/build-tools/${buildToolsVersion}/aapt2";
 
-              shellHook = ''
+              shellHook = inputs.std.lib.devStateHook + ''
                 # Create a mutable copy of the Android SDK so Gradle can install
                 # additional components (platform revisions, etc.) at runtime
-                export ANDROID_SDK_MUTABLE="$HOME/.cache/eden-android-sdk"
+                export GRADLE_USER_HOME="$DEVSHELL_STATE/gradle"
+                export ANDROID_USER_HOME="$DEVSHELL_STATE/android"
+                export ANDROID_SDK_MUTABLE="$DEVSHELL_STATE/android-sdk"
                 if [ ! -d "$ANDROID_SDK_MUTABLE" ]; then
                   echo "Creating mutable Android SDK copy (first time only)..."
                   mkdir -p "$ANDROID_SDK_MUTABLE"
