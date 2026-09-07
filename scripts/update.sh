@@ -49,7 +49,26 @@ if [ "$NEW_REV" = "$CURRENT_REV" ]; then
   exit 0
 fi
 
-BASE="${CURRENT_VERSION%%-unstable-*}"
+# The base is upstream's newest release tag, refetched on every bump. Reading
+# it back out of CURRENT_VERSION only echoes whatever it was first set to,
+# which is how this package kept calling itself 0.2.0-rc2 long after upstream
+# shipped 0.2.0 and 0.2.1. The shape filter is not optional: this upstream
+# carries tags like test-tag2, 0.0.3.git and 0.0.4.test, and a plain version
+# sort ranks every one of them above the newest release.
+TAGS_API="https://$HOST/api/v1/repos/$OWNER/$REPO/tags?limit=100"
+TAGS_JSON=$(curl -sfL --retry 3 --retry-all-errors "$TAGS_API" 2>/dev/null) || {
+  warn "Failed to reach the Gitea tags API: $TAGS_API"
+  output "updated" "false"
+  exit 2
+}
+BASE=$(echo "$TAGS_JSON" | jq -r '.[].name // empty' | sed 's/^v//' |
+  { grep -E '^[0-9]+(\.[0-9]+)+$' || true; } | sort -V | tail -1)
+if [ -z "$BASE" ]; then
+  err "upstream published no release-shaped tag to base the snapshot version on"
+  output "updated" "false"
+  output "error_type" "config-error"
+  exit 1
+fi
 NEW_VERSION="${BASE}-unstable-${NEW_DATE}"
 output "new_version" "$NEW_VERSION"
 output "updated" "true"

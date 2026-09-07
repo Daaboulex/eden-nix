@@ -45,14 +45,12 @@
   libxi,
   libxrandr,
   libxfixes,
-  libxscrnsaver,
   libxcb,
-  libxtst,
 }:
 
 let
   rev = "74ccea3defb9bb2db4674ecb378bd7c865f7fa73";
-  version = "0.2.0-rc2-unstable-2026-09-07";
+  version = "0.2.1-unstable-2026-09-07";
 
   bundled = [
     "enet"
@@ -131,7 +129,6 @@ stdenv.mkDerivation {
     lz4
     nlohmann_json
     nv-codec-headers-12
-    protobuf
     openssl
     zlib
     zstd
@@ -154,9 +151,7 @@ stdenv.mkDerivation {
     libxi
     libxrandr
     libxfixes
-    libxscrnsaver
     libxcb
-    libxtst
   ];
 
   preConfigure = ''
