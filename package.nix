@@ -49,8 +49,8 @@
 }:
 
 let
-  rev = "5f142c7926d0c7fcbbd0ce30794d72f638a43b2a";
-  version = "0.2.1-unstable-2026-09-09";
+  rev = "a277b62fe4328dddaced9a97d324c6e5478d16a0";
+  version = "0.2.1-unstable-2026-09-20";
 
   bundled = [
     "enet"
@@ -67,6 +67,7 @@ let
     "cpp-jwt"
     "sdl3"
     "sirit"
+    "reshade"
     "tzdb"
     "vulkan-headers"
     "vulkan-utility-libraries"
@@ -89,7 +90,7 @@ stdenv.mkDerivation {
     owner = "eden-emu";
     repo = "eden";
     inherit rev;
-    hash = "sha256-/sZo2T4UojOh1fvq3L9qjUVJbv4RaS/rRxgkGtRY3Rs=";
+    hash = "sha256-cLLwU3rIbmLmjzHwGfQhuJDdfkPwWjsabdixoGUGuSc=";
     fetchSubmodules = true;
   };
 
