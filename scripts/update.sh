@@ -8,6 +8,25 @@ log() { echo "==> $*"; }
 warn() { echo "::warning::$*"; }
 err() { echo "::error::$*"; }
 
+check_suite() {
+  local clog rc
+  clog=$(mktemp)
+  nix flake check --no-eval-cache --print-build-logs 2>&1 | tee "$clog"
+  rc=${PIPESTATUS[0]}
+  if [ "$rc" -eq 0 ]; then
+    rm -f "$clog"
+    return 0
+  fi
+  err "Check suite failed"
+  if grep -qE "Cannot build '/nix/store/[^']+\.drv'" "$clog"; then
+    output "error_type" "build-error"
+  else
+    output "error_type" "eval-error"
+  fi
+  rm -f "$clog"
+  return 1
+}
+
 CONFIG=$(cat .github/update.json)
 HOST=$(echo "$CONFIG" | jq -r '.upstream.host')
 OWNER=$(echo "$CONFIG" | jq -r '.upstream.owner')
@@ -104,10 +123,8 @@ fi
 sed -i "s|hash = \"${DUMMY_HASH}\"|hash = \"${NEW_HASH}\"|" package.nix
 log "eden source hash: $NEW_HASH"
 
-log "Step 1/2: nix flake check --no-build"
-if ! nix flake check --no-build 2>&1; then
-  err "Eval check failed"
-  output "error_type" "eval-error"
+log "Step 1/2: nix flake check"
+if ! check_suite; then
   exit 1
 fi
 
