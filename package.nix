@@ -49,8 +49,8 @@
 }:
 
 let
-  rev = "f273423b2b83f1a37cc7c1a7a92601f26e0c12ae";
-  version = "0.2.1-unstable-2026-09-26";
+  rev = "815325cceca948030cf476dce7c46d901e4e4df5";
+  version = "0.2.1-unstable-2026-09-27";
 
   bundled = [
     "enet"
@@ -71,6 +71,7 @@ let
     "tzdb"
     "vulkan-headers"
     "vulkan-utility-libraries"
+    "zbic"
   ]
   ++ lib.optional stdenv.hostPlatform.isx86_64 "xbyak"
   ++ lib.optional stdenv.hostPlatform.isAarch64 "oaknut";
@@ -90,7 +91,7 @@ stdenv.mkDerivation {
     owner = "eden-emu";
     repo = "eden";
     inherit rev;
-    hash = "sha256-/rQZPxqd+MpaduNKbhAr6ol7HUm8ycdDnOuqmTdyV1c=";
+    hash = "sha256-dospPZTf7ZNV1haXIWHB3e87oOy9PhHKl81SsWYPx2g=";
     fetchSubmodules = true;
   };
 
