@@ -202,6 +202,7 @@ stdenv.mkDerivation {
     "-DUSE_DISCORD_PRESENCE=ON"
     "-DENABLE_UPDATE_CHECKER=OFF"
     "-DENABLE_WEB_SERVICE=ON"
+    "-DENABLE_WERROR=OFF"
   ];
 
   qtWrapperArgs = [
