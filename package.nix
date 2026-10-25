@@ -49,8 +49,8 @@
 }:
 
 let
-  rev = "989768aa46720e3fcab9e2111e3ddd70819c382b";
-  version = "0.2.1-unstable-2026-10-19";
+  rev = "305f40100d76ec57b13c2f03eafd490db83691cb";
+  version = "0.2.1-unstable-2026-10-25";
 
   bundled = [
     "enet"
@@ -91,7 +91,7 @@ stdenv.mkDerivation {
     owner = "eden-emu";
     repo = "eden";
     inherit rev;
-    hash = "sha256-w+GrA3jnO8vdom+t2KgIQXMT/iJOZNFLYXtM3kXt7CI=";
+    hash = "sha256-DxRc+FuEhgiVeOSfTFEb8yYDUuOwX0T9QbEpoMjKBb4=";
     fetchSubmodules = true;
   };
 
