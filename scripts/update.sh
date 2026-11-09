@@ -4,9 +4,9 @@ set -euo pipefail
 OUTPUT_FILE="${GITHUB_OUTPUT:-/tmp/update-outputs.env}"
 : >"$OUTPUT_FILE"
 output() { echo "$1=$2" >>"$OUTPUT_FILE"; }
-log() { echo "==> $*"; }
-warn() { echo "::warning::$*"; }
-err() { echo "::error::$*"; }
+log() { echo "==> $*" >&2; }
+warn() { echo "::warning::$*" >&2; }
+err() { echo "::error::$*" >&2; }
 
 check_suite() {
   local clog rc
@@ -110,8 +110,14 @@ sed -i "s|hash = \"${CURRENT_HASH}\"|hash = \"${DUMMY_HASH}\"|" package.nix
 BUILD_OUTPUT=$(nix build .#default --no-link 2>&1 || true)
 NEW_HASH=$(echo "$BUILD_OUTPUT" | grep -oP 'got:\s+\Ksha256-\S+' | head -1 || true)
 if [ -z "$NEW_HASH" ]; then
-  err "Could not extract the eden source hash from the build output"
-  output "error_type" "hash-extraction"
+  printf '%s\n' "$BUILD_OUTPUT" | tail -n 40 >&2
+  if grep -q 'hash mismatch in fixed-output' <<<"$BUILD_OUTPUT"; then
+    err "The source fetch failed without a new hash; the build output is above"
+    output "error_type" "hash-extraction"
+  else
+    err "The build failed before the source was fetched, so no new hash exists: upstream's cpmfile.json at $NEW_REV no longer matches package.nix (a bundled dependency added, renamed or removed). The build output is above"
+    output "error_type" "eval-error"
+  fi
   exit 1
 fi
 MISMATCH_COUNT=$(echo "$BUILD_OUTPUT" | grep -c 'hash mismatch in fixed-output' || true)
