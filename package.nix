@@ -20,7 +20,6 @@
   libusb1,
   libva,
   lz4,
-  nlohmann_json,
   openssl,
   zlib,
   zstd,
@@ -49,7 +48,7 @@
 }:
 
 let
-  rev = "6e24dcb4b549e40f2ea02a29db86f02de6444887";
+  rev = "ae60f8e7f85915a2b79d98b49e3134bbdbeca471";
   version = "0.2.1-unstable-2026-11-08";
 
   bundled = [
@@ -63,7 +62,8 @@ let
     "frozen"
     "quazip"
     "libusb"
-    "httplib"
+    "hydrocarbon"
+    "jacinth"
     "cpp-jwt"
     "sdl3"
     "sirit"
@@ -91,7 +91,7 @@ stdenv.mkDerivation {
     owner = "eden-emu";
     repo = "eden";
     inherit rev;
-    hash = "sha256-kCQ7BQaAwvBkoLhZ2VtFatMpyJT/hORlZUStao67nUQ=";
+    hash = "sha256-gOkPIsfnuNo9M++BkwCb2LrR+SVBdgLMX6sG2y+ZcDs=";
     fetchSubmodules = true;
   };
 
@@ -129,7 +129,6 @@ stdenv.mkDerivation {
     libva
     libzip
     lz4
-    nlohmann_json
     nv-codec-headers-12
     openssl
     zlib
