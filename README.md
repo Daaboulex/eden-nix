@@ -21,15 +21,12 @@ Nix flake for the [Eden](https://eden-emu.dev) Nintendo Switch emulator.
 
 ## What Is This?
 
-A Nix flake that builds Eden from upstream master with full CI infrastructure:
+A Nix flake that builds Eden from upstream master:
 
-- **Daily automated updates** via GitHub Actions — new master commits land here within 24 h
-- **CPM dependencies from upstream's own manifest** — `deps/cpmfile.json` is Eden's `cpmfile.json` vendored at the pinned revision; every bundled dependency's URL and hash derive from it
-- **Pre-build verification** — fail-closed pipeline (eval → build → ELF check) before any push to `main`
+- **CPM dependencies from upstream's own manifest** — [`deps/cpmfile.json`](./deps/cpmfile.json) is Eden's `cpmfile.json` vendored at the pinned revision; every bundled dependency's URL and hash derive from it
+- **Update verification**: the updater runs `nix flake check`, then a full build, before any push to `main`
 - **NixOS module** — exposes `programs.eden.enable` for declarative install
 - **Android devshell** — bundled SDK/NDK environment for building the Eden APK on NixOS
-
-**This package tracks the latest master branch** with daily automated updates via GitHub Actions.
 
 <!-- BEGIN generated:installation -->
 ## Installation
@@ -88,7 +85,7 @@ cd src/android && ./gradlew assembleRelease
 
 ## How it works
 
-Eden uses CPM (CMake Package Manager) to fetch dependencies at build time from the manifest `cpmfile.json`. Since Nix builds are sandboxed without network access, this flake vendors that manifest at the pinned revision (`deps/cpmfile.json`), fetches every bundled dependency from the URL and sha512 it declares (`deps/default.nix`), and stages them into the CPM cache with the patches and patch key Eden's own CPMUtil expects (`package.nix`).
+Eden uses CPM (CMake Package Manager) to fetch dependencies at build time from the manifest `cpmfile.json`. Since Nix builds are sandboxed without network access, this flake vendors that manifest at the pinned revision ([`deps/cpmfile.json`](./deps/cpmfile.json)), fetches every bundled dependency from the URL and sha512 it declares ([`deps/default.nix`](./deps/default.nix)), and stages them into the CPM cache with the patches and patch key Eden's own CPMUtil expects ([`package.nix`](./package.nix)).
 
 The Vulkan dependencies (`vulkan-headers` and `vulkan-utility-libraries`) are bundled together via CPM to avoid version mismatches with system packages.
 
@@ -129,14 +126,12 @@ nix build                         # build the package
 ./result/bin/eden                 # binary verify
 ```
 
-CI runs the same chain daily; manual updates rarely needed.
-
 ## Updating
 
 This flake automatically tracks the latest Eden master branch via GitHub Actions:
 
-- A workflow runs daily at 6 AM UTC (or manually via Actions → "Update Eden" → "Run workflow")
-- `scripts/update.sh` bumps the pinned revision, re-vendors upstream's `cpmfile.json`, and recomputes the source hash
+- [`update.yml`](./.github/workflows/update.yml) runs daily at 6 AM UTC, or manually from the Actions tab: choose "Update", then "Run workflow"
+- [`scripts/update.sh`](./scripts/update.sh) bumps the pinned revision, re-vendors upstream's `cpmfile.json`, and recomputes the source hash
 - A dependency Eden newly bundles surfaces as a configure-time download attempt in the sandbox, so the build fails instead of fetching silently
 - If the build passes, changes are pushed directly to main
 - If the build fails, a GitHub issue is opened with the classified failure and build output
