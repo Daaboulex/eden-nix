@@ -1,37 +1,17 @@
-# eden-nix
+# Eden (Nix)
 
-<!-- BEGIN generated:badges -->
-[![CI](https://github.com/Daaboulex/eden-nix/actions/workflows/ci.yml/badge.svg)](https://github.com/Daaboulex/eden-nix/actions/workflows/ci.yml)
-[![NixOS unstable](https://img.shields.io/badge/NixOS-unstable-78C0E8?logo=nixos&logoColor=white)](https://nixos.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-<!-- END generated:badges -->
+A Nix flake for [Eden](https://eden-emu.dev), the Nintendo Switch emulator,
+built from upstream's master branch. It is for NixOS users who want Eden
+installed declaratively, through a module. It also carries a dev shell for
+building Eden's Android APK on NixOS.
 
-Nix flake for the [Eden](https://eden-emu.dev) Nintendo Switch emulator.
+The flake declares `x86_64-linux` and `aarch64-linux`. A new upstream revision
+reaches `main` only after the checks and a full build have passed. Nothing here
+starts the emulator or a game, so whether a given game runs is untested.
 
-<!-- BEGIN generated:upstream -->
-## Upstream
+## Install
 
-| | |
-|---|---|
-| **Project** | [eden-emu/eden](https://git.eden-emu.dev/eden-emu/eden) |
-| **License** | GPL-3.0-or-later |
-| **Tracked** | Gitea commits |
-
-<!-- END generated:upstream -->
-
-## What Is This?
-
-A Nix flake that builds Eden from upstream master:
-
-- **CPM dependencies from upstream's own manifest** — [`deps/cpmfile.json`](./deps/cpmfile.json) is Eden's `cpmfile.json` vendored at the pinned revision; every bundled dependency's URL and hash derive from it
-- **Update verification**: the updater runs `nix flake check`, then a full build, before any push to `main`
-- **NixOS module** — exposes `programs.eden.enable` for declarative install
-- **Android devshell** — bundled SDK/NDK environment for building the Eden APK on NixOS
-
-<!-- BEGIN generated:installation -->
-## Installation
-
-Add as a flake input:
+Add the flake:
 
 ```nix
 {
@@ -42,109 +22,90 @@ Add as a flake input:
 }
 ```
 
-Then add the overlay:
+Then add the overlay, import the module and switch it on:
 
 ```nix
-nixpkgs.overlays = [ inputs.eden.overlays.default ];
+{
+  imports = [ inputs.eden.nixosModules.default ];
+  nixpkgs.overlays = [ inputs.eden.overlays.default ];
+
+  programs.eden.enable = true;
+}
 ```
 
-Import the NixOS module:
+This installs Eden with its desktop entry and its udev rules for controllers.
+The module takes its package from `pkgs.eden`, which the overlay provides.
 
-```nix
-imports = [ inputs.eden.nixosModules.default ];
-```
-
-<!-- END generated:installation -->
-
-## Build from source
+To try Eden without installing it, build it from a clone:
 
 ```bash
-git clone https://github.com/daaboulex/eden-nix
+git clone https://github.com/Daaboulex/eden-nix
 cd eden-nix
 nix build
 ./result/bin/eden
 ```
 
-## Android APK Build
+## Use
 
-An Android devshell is included for building the Eden APK on NixOS. It provides the Android SDK (API 36), NDK 28, JDK 21, CMake, and all necessary environment variables.
+Start Eden from the application menu, or run `eden` in a terminal.
+`eden --help` shows the command-line options.
+
+Before the first game:
+
+1. Place your Switch firmware in `~/.local/share/eden/nand/system/Contents/registered/`.
+2. Place your `prod.keys` in `~/.local/share/eden/keys/`.
+3. Add game files (NSP or XCI) through File, then Open, or through the game
+   directory setting.
+
+## Options
+
+The module has two options. `programs.eden.enable` installs Eden.
+`programs.eden.package` chooses the Eden package to use, `pkgs.eden` by default.
+
+Every option, with its type and default: [docs/OPTIONS.md](docs/OPTIONS.md).
+
+## Building the Android APK
+
+The `android` dev shell builds the Eden APK on NixOS. It provides the Android
+SDK (API 36), NDK 28, JDK 21, CMake and the environment variables the build
+needs.
 
 ```bash
-# Clone Eden source
 git clone --recurse-submodules https://git.eden-emu.dev/eden-emu/eden.git
 cd eden
-
-# Enter the Android devshell
-nix develop github:daaboulex/eden-nix#android
-
-# Build the APK
+nix develop github:Daaboulex/eden-nix#android
 cd src/android && ./gradlew assembleRelease
 ```
 
-> **Note:** The Android SDK packages are unfree. The devshell handles license acceptance automatically — no `--impure` flag needed.
+The Android SDK packages are unfree. The shell accepts their license itself, so
+no `--impure` flag is needed.
 
-## How it works
+## Known limits
 
-Eden uses CPM (CMake Package Manager) to fetch dependencies at build time from the manifest `cpmfile.json`. Since Nix builds are sandboxed without network access, this flake vendors that manifest at the pinned revision ([`deps/cpmfile.json`](./deps/cpmfile.json)), fetches every bundled dependency from the URL and sha512 it declares ([`deps/default.nix`](./deps/default.nix)), and stages them into the CPM cache with the patches and patch key Eden's own CPMUtil expects ([`package.nix`](./package.nix)).
+- Firmware, keys and games are yours to supply.
+- The package follows upstream's master branch, not its tagged releases.
+- The interface translations are not built.
+- Eden's own update checker is switched off.
 
-The Vulkan dependencies (`vulkan-headers` and `vulkan-utility-libraries`) are bundled together via CPM to avoid version mismatches with system packages.
+## When something does not work
 
-## Usage
+The package is updated by a scheduled job. When an update fails its checks or
+its build, `main` stays on the last revision that passed and a GitHub issue is
+opened with the failure and the build output. Look at the
+[issues](https://github.com/Daaboulex/eden-nix/issues) first when the package
+lags behind upstream.
 
-Enable Eden via the NixOS module:
+To report a security problem, follow [SECURITY.md](SECURITY.md).
 
-```nix
-{
-  programs.eden = {
-    enable = true;
-  };
-}
-```
+## More
 
-This installs the Eden binary and creates a `.desktop` entry. Launch from your application menu or terminal:
-
-```bash
-eden                     # launch the GUI
-eden --help              # show CLI options
-```
-
-### First-time setup
-
-1. Place your Switch firmware in `~/.local/share/eden/nand/system/Contents/registered/`
-2. Place your `prod.keys` in `~/.local/share/eden/keys/`
-3. Add game files (NSP/XCI) via **File → Open** or the game directory setting
-
-## Development
-
-```bash
-git clone https://github.com/Daaboulex/eden-nix
-cd eden-nix
-nix develop                       # enter dev shell, installs pre-commit hooks
-nix fmt                           # format flake
-nix flake check --no-build        # eval check
-nix build                         # build the package
-./result/bin/eden                 # binary verify
-```
-
-## Updating
-
-This flake automatically tracks the latest Eden master branch via GitHub Actions:
-
-- [`update.yml`](./.github/workflows/update.yml) runs daily at 6 AM UTC, or manually from the Actions tab: choose "Update", then "Run workflow"
-- [`scripts/update.sh`](./scripts/update.sh) bumps the pinned revision, re-vendors upstream's `cpmfile.json`, and recomputes the source hash
-- A dependency Eden newly bundles surfaces as a configure-time download attempt in the sandbox, so the build fails instead of fetching silently
-- If the build passes, changes are pushed directly to main
-- If the build fails, a GitHub issue is opened with the classified failure and build output
-
-<!-- BEGIN generated:options -->
-## Options
-
-This module declares `programs.eden.{enable,package}`. See [`module.nix`](module.nix) for the module definition.
-<!-- END generated:options -->
+- [docs/DESIGN.md](docs/DESIGN.md): how Eden's bundled dependencies reach a
+  sandboxed build, what the module does, why the Android shell is separate
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): building, the checks, the Android
+  shell in detail, how the automatic update works
+- [Eden upstream](https://git.eden-emu.dev/eden-emu/eden): the emulator's own
+  source
 
 ## License
 
 The Nix packaging code is [MIT](./LICENSE) licensed. Upstream Eden is [GPL-3.0-or-later](https://git.eden-emu.dev/eden-emu/eden/src/branch/master/LICENSE.txt).
-
-<!-- BEGIN generated:footer -->
-<!-- END generated:footer -->
