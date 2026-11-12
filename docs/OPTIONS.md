@@ -10,12 +10,10 @@ Declared in [module.nix](../module.nix).
 
 Whether to enable Eden Nintendo Switch Emulator.
 
-- Type: boolean
-- Default: `false`
+Type: `boolean`. Default: `false`.
 
 ### `programs.eden.package`
 
 The Eden package to use.
 
-- Type: package
-- Default: `pkgs.eden`
+Type: `package`. Default: `pkgs.eden`.
