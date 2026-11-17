@@ -51,7 +51,8 @@ let
   rev = "e3b18a89971fcccec741f63f389a80faaf189279";
   version = "0.2.1-unstable-2026-11-15";
 
-  bundled = [
+  bundled = lib.filter (key: deps ? ${key}) staged;
+  staged = [
     "enet"
     "simpleini"
     "cubeb"
