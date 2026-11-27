@@ -221,6 +221,13 @@ stdenv.mkDerivation {
     install -Dm644 $src/dist/dev.eden_emu.eden.metainfo.xml $out/share/metainfo/dev.eden_emu.eden.metainfo.xml
   '';
 
+  doInstallCheck = true;
+  installCheckPhase = ''
+    runHook preInstallCheck
+    HOME=$TMPDIR $out/bin/eden-cli --version
+    runHook postInstallCheck
+  '';
+
   meta = with lib; {
     description = "Nintendo Switch Emulator (Eden community fork)";
     homepage = "https://eden-emu.dev";
