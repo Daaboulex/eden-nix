@@ -2,7 +2,12 @@
 let
   inherit (pkgs) lib;
   manifest = lib.importJSON ./cpmfile.json;
-  fetchable = _: entry: !(entry.ci or false);
+  fetchable =
+    _: entry:
+    !(builtins.elem (entry.ci or false) [
+      true
+      "true"
+    ]);
   version =
     entry: lib.replaceStrings [ "%NUMERIC_VERSION%" ] [ (entry.numeric_version or "") ] entry.version;
   artifact =
